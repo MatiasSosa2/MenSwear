@@ -17,6 +17,7 @@ export default function Checkout() {
   // Estados de confirmación
   const [datosConfirmados, setDatosConfirmados] = useState(false);
   const [entregaConfirmada, setEntregaConfirmada] = useState(false);
+  const [compraConfirmada, setCompraConfirmada] = useState(false);
 
   // Section 1: Datos
   const [name, setName] = useState("");
@@ -62,7 +63,7 @@ export default function Checkout() {
   const datosValidos = name.trim().length >= 2 && isValidEmail(email) && phone.trim().length >= 7;
   const entregaValida = address.trim().length >= 3 && city.trim().length >= 2 && province.trim().length >= 2 && zip.trim().length >= 3;
 
-  const canPay = datosConfirmados && entregaConfirmada && total > 0;
+  const canPay = datosConfirmados && entregaConfirmada && compraConfirmada && total > 0;
 
   // Función para remover items del carrito
   const removeItem = (productId) => {
@@ -257,7 +258,11 @@ export default function Checkout() {
                   <span className="text-sm font-bold text-green-800">DATOS CONFIRMADOS</span>
                 </div>
                 <button
-                  onClick={() => setDatosConfirmados(false)}
+                  onClick={() => {
+                    setDatosConfirmados(false);
+                    setEntregaConfirmada(false);
+                    setCompraConfirmada(false);
+                  }}
                   className="text-xs font-semibold text-green-700 hover:text-green-900 underline"
                 >
                   Editar
@@ -276,11 +281,6 @@ export default function Checkout() {
 
           {/* 2. ENTREGA (habilitar solo si 1 confirmada) */}
           <SectionTitle number={2} title="ENTREGA" />
-          {!entregaConfirmada ? (
-            <div className={classNames("relative border rounded-sm p-4 mb-4", datosConfirmados ? "border-gray-200" : "border-gray-300")}> 
-              <div className={classNames("space-y-4", !datosConfirmados && "opacity-50 pointer-events-none")}> 
-                <Input label="Dirección" value={address} onChange={setAddress} placeholder="CALLE 123" />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Input label="Ciudad" value={city} onChange={setCity} placeholder="CABA" />
                   <Input label="Provincia" value={province} onChange={setProvince} placeholder="BUENOS AIRES" />
                   <Input label="Código Postal" value={zip} onChange={setZip} placeholder="1000" />
@@ -313,7 +313,10 @@ export default function Checkout() {
                   <span className="text-sm font-bold text-green-800">ENTREGA CONFIRMADA</span>
                 </div>
                 <button
-                  onClick={() => setEntregaConfirmada(false)}
+                  onClick={() => {
+                    setEntregaConfirmada(false);
+                    setCompraConfirmada(false);
+                  }}
                   className="text-xs font-semibold text-green-700 hover:text-green-900 underline"
                 >
                   Editar
@@ -330,79 +333,126 @@ export default function Checkout() {
           {/* Separador */}
           <div className="h-[2px] bg-black/90 rounded-full my-4" />
 
-          {/* 3. PAGO */}
-          <SectionTitle number={3} title="PAGO" />
-          <div className={classNames("border rounded-sm p-4", canPay ? "border-gray-200" : "border-gray-300")}> 
-            <div className={classNames("grid md:grid-cols-2 gap-4", !canPay && "opacity-50 pointer-events-none")}> 
-              {/* Resumen integrado (izquierda) */}
-              <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
-
-              {/* Formulario de pago (derecha) */}
-              <div className="space-y-4">
-                {paymentStatus && (
-                  <div className={classNames(
-                    "p-4 rounded-sm border",
-                    paymentStatus.type === 'success' ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"
-                  )}>
-                    <p className="text-sm font-medium">{paymentStatus.message}</p>
-                  </div>
-                )}
-
-                {canPay && !paymentStatus && (
-                  <>
-                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-sm">
-                      <p className="text-xs text-gray-600 mb-1">TOTAL A PAGAR</p>
-                      <p className="text-2xl font-bold">{formatARS(total)}</p>
-                    </div>
-
-                    {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
-                        <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Configuración pendiente</p>
-                        <p className="text-xs text-yellow-800 mb-3">
-                          Para aceptar pagos, necesitas configurar tus credenciales de Mercado Pago.
-                        </p>
-                        <div className="text-xs text-yellow-900 space-y-1">
-                          <p>1. Crea archivo <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code></p>
-                          <p>2. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">NEXT_PUBLIC_MP_PUBLIC_KEY=TU_KEY</code></p>
-                          <p>3. Reinicia el servidor</p>
-                        </div>
-                        <a 
-                          href="https://www.mercadopago.com.ar/developers/panel/credentials" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="mt-3 inline-block text-xs font-semibold text-yellow-900 underline hover:text-yellow-700"
-                        >
-                          Obtener credenciales →
-                        </a>
-                      </div>
-                    ) : typeof window !== 'undefined' && mpInitialized.current ? (
-                      <Payment
-                        key={`payment-${email}-${total}`}
-                        initialization={initialization}
-                        customization={customization}
-                        onSubmit={onSubmitPayment}
-                        onError={onErrorPayment}
-                      />
-                    ) : (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-sm">
-                        <p className="text-sm text-blue-800">
-                          ⏳ Inicializando sistema de pago...
-                        </p>
-                      </div>
+          {/* 3. RESUMEN DE COMPRA */}
+          <SectionTitle number={3} title="RESUMEN DE COMPRA" />
+          {!compraConfirmada ? (
+            <div className={classNames("border rounded-sm p-4 mb-4", datosConfirmados && entregaConfirmada ? "border-gray-200" : "border-gray-300")}>
+              <div className={classNames("space-y-4", (!datosConfirmados || !entregaConfirmada) && "opacity-50 pointer-events-none")}>
+                <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
+                
+                {items.length > 0 && (
+                  <button
+                    onClick={() => datosConfirmados && entregaConfirmada && setCompraConfirmada(true)}
+                    disabled={!datosConfirmados || !entregaConfirmada || items.length === 0}
+                    className={classNames(
+                      "w-full py-2.5 sm:py-3 px-4 rounded-sm font-semibold text-sm transition-all",
+                      datosConfirmados && entregaConfirmada && items.length > 0
+                        ? "bg-black text-white hover:opacity-90" 
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     )}
-                  </>
+                  >
+                    CONFIRMAR COMPRA
+                  </button>
                 )}
-
-                {total <= 0 && (
-                  <p className="text-xs text-gray-500">Tu carrito está vacío.</p>
+                {items.length === 0 && (
+                  <p className="text-xs text-red-600">No hay productos en el carrito.</p>
                 )}
               </div>
+            </div>
+          ) : (
+            <div className="border border-green-200 bg-green-50 rounded-sm p-4 mb-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-bold text-green-800">COMPRA CONFIRMADA</span>
+                </div>
+                <button
+                  onClick={() => setCompraConfirmada(false)}
+                  className="text-xs font-semibold text-green-700 hover:text-green-900 underline"
+                >
+                  Editar
+                </button>
+              </div>
+              <div className="space-y-2 text-sm text-green-900">
+                <p><span className="font-semibold">Productos:</span> {items.length} {items.length === 1 ? 'item' : 'items'}</p>
+                <p><span className="font-semibold">Total:</span> {formatARS(total)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Separador */}
+          <div className="h-[2px] bg-black/90 rounded-full my-4" />
+
+          {/* 4. PAGO */}
+          <SectionTitle number={4} title="PAGO" />
+          <div className={classNames("border rounded-sm p-4", canPay ? "border-gray-200" : "border-gray-300")}>
+            <div className={classNames(!canPay && "opacity-50 pointer-events-none")}>
+              {paymentStatus && (
+                <div className={classNames(
+                  "p-4 rounded-sm border mb-4",
+                  paymentStatus.type === 'success' ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"
+                )}>
+                  <p className="text-sm font-medium">{paymentStatus.message}</p>
+                </div>
+              )}
+
+              {canPay && !paymentStatus && (
+                <>
+                  <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-sm">
+                    <p className="text-xs text-gray-600 mb-1">TOTAL A PAGAR</p>
+                    <p className="text-2xl font-bold">{formatARS(total)}</p>
+                  </div>
+
+                  {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
+                      <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Configuración pendiente</p>
+                      <p className="text-xs text-yellow-800 mb-3">
+                        Para aceptar pagos, necesitas configurar tus credenciales de Mercado Pago.
+                      </p>
+                      <div className="text-xs text-yellow-900 space-y-1">
+                        <p>1. Crea archivo <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code></p>
+                        <p>2. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">NEXT_PUBLIC_MP_PUBLIC_KEY=TU_KEY</code></p>
+                        <p>3. Reinicia el servidor</p>
+                      </div>
+                      <a 
+                        href="https://www.mercadopago.com.ar/developers/panel/credentials" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-block text-xs font-semibold text-yellow-900 underline hover:text-yellow-700"
+                      >
+                        Obtener credenciales →
+                      </a>
+                    </div>
+                  ) : typeof window !== 'undefined' && mpInitialized.current ? (
+                    <Payment
+                      key={`payment-${email}-${total}`}
+                      initialization={initialization}
+                      customization={customization}
+                      onSubmit={onSubmitPayment}
+                      onError={onErrorPayment}
+                    />
+                  ) : (
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-sm">
+                      <p className="text-sm text-blue-800">
+                        ⏳ Inicializando sistema de pago...
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {total <= 0 && (
+                <p className="text-xs text-gray-500">Tu carrito está vacío.</p>
+              )}
             </div>
             {!canPay && (
               <div className="mt-3 text-xs text-gray-600">
                 {!datosConfirmados && "Confirma tus datos personales para continuar."}
                 {datosConfirmados && !entregaConfirmada && "Confirma la dirección de entrega para continuar."}
-                {datosConfirmados && entregaConfirmada && total <= 0 && "Tu carrito está vacío."}
+                {datosConfirmados && entregaConfirmada && !compraConfirmada && "Confirma la compra para continuar."}
+                {datosConfirmados && entregaConfirmada && compraConfirmada && total <= 0 && "Tu carrito está vacío."}
               </div>
             )}
           </div>
