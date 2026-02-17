@@ -14,6 +14,10 @@ export default function Checkout() {
   const [paymentStatus, setPaymentStatus] = useState(null);
   const mpInitialized = useRef(false);
 
+  // Estados de confirmación
+  const [datosConfirmados, setDatosConfirmados] = useState(false);
+  const [entregaConfirmada, setEntregaConfirmada] = useState(false);
+
   // Section 1: Datos
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -58,7 +62,18 @@ export default function Checkout() {
   const datosValidos = name.trim().length >= 2 && isValidEmail(email) && phone.trim().length >= 7;
   const entregaValida = address.trim().length >= 3 && city.trim().length >= 2 && province.trim().length >= 2 && zip.trim().length >= 3;
 
-  const canPay = datosValidos && entregaValida && total > 0;
+  const canPay = datosConfirmados && entregaConfirmada && total > 0;
+
+  // Función para remover items del carrito
+  const removeItem = (productId) => {
+    try {
+      const updatedItems = items.filter(item => item.id !== productId);
+      setItems(updatedItems);
+      localStorage.setItem('cart', JSON.stringify(updatedItems));
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
 
   const onSubmitPayment = async (formData) => {
     if (!canPay || processing) return;
@@ -185,7 +200,7 @@ export default function Checkout() {
           <span className="text-gray-600">{summaryOpen ? "Cerrar" : "Ver"}</span>
         </button>
         {summaryOpen && (
-          <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} />
+          <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
         )}
       </div>
 
@@ -195,36 +210,108 @@ export default function Checkout() {
         <div className="md:col-span-12">
           {/* 1. DATOS */}
           <SectionTitle number={1} title="DATOS" />
-          <div className="border border-gray-200 rounded-sm p-3 sm:p-4 mb-3 sm:mb-4">
-            <div className="space-y-3 sm:space-y-4">
-              <Input label="Nombre y apellido" value={name} onChange={setName} placeholder="EJ: MATÍAS CORTEZ" />
-              <Input label="Email" type="email" value={email} onChange={(v) => { setEmail(v); try { localStorage.setItem("checkout_email", v); } catch {} }} placeholder="CLIENTE@CORREO.COM" />
-              <Input label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 11 5555 5555" />
-              {!datosValidos && (
-                <p className="text-xs sm:text-sm text-red-600">Completa nombre, email y teléfono para continuar.</p>
-              )}
+          {!datosConfirmados ? (
+            <div className="border border-gray-200 rounded-sm p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="space-y-3 sm:space-y-4">
+                <Input label="Nombre y apellido" value={name} onChange={setName} placeholder="EJ: MATÍAS CORTEZ" />
+                <Input label="Email" type="email" value={email} onChange={(v) => { setEmail(v); try { localStorage.setItem("checkout_email", v); } catch {} }} placeholder="CLIENTE@CORREO.COM" />
+                <Input label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 11 5555 5555" />
+                {!datosValidos && (
+                  <p className="text-xs sm:text-sm text-red-600">Completa nombre, email y teléfono para continuar.</p>
+                )}
+                <button
+                  onClick={() => datosValidos && setDatosConfirmados(true)}
+                  disabled={!datosValidos}
+                  className={classNames(
+                    "w-full py-2.5 sm:py-3 px-4 rounded-sm font-semibold text-sm transition-all",
+                    datosValidos 
+                      ? "bg-black text-white hover:opacity-90" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  )}
+                >
+                  CONFIRMAR DATOS
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="border border-green-200 bg-green-50 rounded-sm p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-bold text-green-800">DATOS CONFIRMADOS</span>
+                </div>
+                <button
+                  onClick={() => setDatosConfirmados(false)}
+                  className="text-xs font-semibold text-green-700 hover:text-green-900 underline"
+                >
+                  Editar
+                </button>
+              </div>
+              <div className="space-y-2 text-sm text-green-900">
+                <p><span className="font-semibold">Nombre:</span> {name}</p>
+                <p><span className="font-semibold">Email:</span> {email}</p>
+                <p><span className="font-semibold">Teléfono:</span> {phone}</p>
+              </div>
+            </div>
+          )}
 
           {/* Separador */}
           <div className="h-[2px] bg-black/90 rounded-full my-4" />
 
-          {/* 2. ENTREGA (habilitar solo si 1 válida) */}
+          {/* 2. ENTREGA (habilitar solo si 1 confirmada) */}
           <SectionTitle number={2} title="ENTREGA" />
-          <div className={classNames("relative border rounded-sm p-4 mb-4", datosValidos ? "border-gray-200" : "border-gray-300")}> 
-            <div className={classNames("space-y-4", !datosValidos && "opacity-50 pointer-events-none")}> 
-              <Input label="Dirección" value={address} onChange={setAddress} placeholder="CALLE 123" />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Input label="Ciudad" value={city} onChange={setCity} placeholder="CABA" />
-                <Input label="Provincia" value={province} onChange={setProvince} placeholder="BUENOS AIRES" />
-                <Input label="Código Postal" value={zip} onChange={setZip} placeholder="1000" />
+          {!entregaConfirmada ? (
+            <div className={classNames("relative border rounded-sm p-4 mb-4", datosConfirmados ? "border-gray-200" : "border-gray-300")}> 
+              <div className={classNames("space-y-4", !datosConfirmados && "opacity-50 pointer-events-none")}> 
+                <Input label="Dirección" value={address} onChange={setAddress} placeholder="CALLE 123" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Input label="Ciudad" value={city} onChange={setCity} placeholder="CABA" />
+                  <Input label="Provincia" value={province} onChange={setProvince} placeholder="BUENOS AIRES" />
+                  <Input label="Código Postal" value={zip} onChange={setZip} placeholder="1000" />
+                </div>
+                <Input label="Notas (opcional)" value={notes} onChange={setNotes} placeholder="INSTRUCCIONES DE ENTREGA…" textarea />
+                {!entregaValida && datosConfirmados && (
+                  <p className="text-xs text-red-600">Completa dirección, ciudad, provincia y código postal.</p>
+                )}
+                <button
+                  onClick={() => entregaValida && datosConfirmados && setEntregaConfirmada(true)}
+                  disabled={!entregaValida || !datosConfirmados}
+                  className={classNames(
+                    "w-full py-2.5 sm:py-3 px-4 rounded-sm font-semibold text-sm transition-all",
+                    entregaValida && datosConfirmados
+                      ? "bg-black text-white hover:opacity-90" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  )}
+                >
+                  CONFIRMAR ENTREGA
+                </button>
               </div>
-              <Input label="Notas (opcional)" value={notes} onChange={setNotes} placeholder="INSTRUCCIONES DE ENTREGA…" textarea />
-              {!entregaValida && datosValidos && (
-                <p className="text-xs text-red-600">Completa dirección, ciudad, provincia y código postal.</p>
-              )}
             </div>
-          </div>
+          ) : (
+            <div className="border border-green-200 bg-green-50 rounded-sm p-4 mb-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-bold text-green-800">ENTREGA CONFIRMADA</span>
+                </div>
+                <button
+                  onClick={() => setEntregaConfirmada(false)}
+                  className="text-xs font-semibold text-green-700 hover:text-green-900 underline"
+                >
+                  Editar
+                </button>
+              </div>
+              <div className="space-y-2 text-sm text-green-900">
+                <p><span className="font-semibold">Dirección:</span> {address}</p>
+                <p><span className="font-semibold">Ciudad:</span> {city}, {province} ({zip})</p>
+                {notes && <p><span className="font-semibold">Notas:</span> {notes}</p>}
+              </div>
+            </div>
+          )}
 
           {/* Separador */}
           <div className="h-[2px] bg-black/90 rounded-full my-4" />
@@ -234,7 +321,7 @@ export default function Checkout() {
           <div className={classNames("border rounded-sm p-4", canPay ? "border-gray-200" : "border-gray-300")}> 
             <div className={classNames("grid md:grid-cols-2 gap-4", !canPay && "opacity-50 pointer-events-none")}> 
               {/* Resumen integrado (izquierda) */}
-              <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} />
+              <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
 
               {/* Formulario de pago (derecha) */}
               <div className="space-y-4">
@@ -280,7 +367,11 @@ export default function Checkout() {
               </div>
             </div>
             {!canPay && (
-              <div className="mt-3 text-xs text-gray-600">Completá los pasos anteriores para habilitar el pago.</div>
+              <div className="mt-3 text-xs text-gray-600">
+                {!datosConfirmados && "Confirma tus datos personales para continuar."}
+                {datosConfirmados && !entregaConfirmada && "Confirma la dirección de entrega para continuar."}
+                {datosConfirmados && entregaConfirmada && total <= 0 && "Tu carrito está vacío."}
+              </div>
             )}
           </div>
         </div>
@@ -323,7 +414,7 @@ function Input({ label, value, onChange, placeholder, type = "text", textarea = 
   );
 }
 
-function Summary({ items, subtotal, shippingLabel, shippingAmount, total }) {
+function Summary({ items, subtotal, shippingLabel, shippingAmount, total, removeItem }) {
   return (
     <div className="border border-gray-200 rounded-sm p-4 bg-[#F9F9F9]">
       <h3 className="text-sm font-bold mb-3 tracking-wider">RESUMEN</h3>
@@ -332,19 +423,30 @@ function Summary({ items, subtotal, shippingLabel, shippingAmount, total }) {
           <p className="text-xs text-gray-500">Tu carrito está vacío.</p>
         ) : (
           items.map((it) => (
-            <div key={it.id} className="flex items-center gap-3">
-              <div className="w-14 h-14 border border-gray-200 rounded-sm overflow-hidden bg-white">
+            <div key={it.id} className="flex items-center gap-3 group">
+              <div className="w-14 h-14 border border-gray-200 rounded-sm overflow-hidden bg-white flex-shrink-0">
                 {it.image ? (
                   <img src={it.image} alt={it.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gray-100" />
                 )}
               </div>
-              <div className="flex-1">
-                <p className="text-xs font-semibold tracking-wide">{(it.title || "").toUpperCase()}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold tracking-wide truncate">{(it.title || "").toUpperCase()}</p>
                 <p className="text-xs text-gray-500">x{it.qty}</p>
               </div>
-              <div className="text-sm font-semibold">{formatARS(it.price * it.qty)}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-semibold">{formatARS(it.price * it.qty)}</div>
+                <button
+                  onClick={() => removeItem(it.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded-sm"
+                  title="Eliminar producto"
+                >
+                  <svg className="w-4 h-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           ))
         )}
