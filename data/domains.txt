@@ -1,0 +1,13 @@
+# Dominios permitidos para buscar imágenes de producto
+# Puedes añadir más, uno por línea. Se admiten URLs completas o sólo hostname.
+
+bearland.com.ar
+kevingston.com
+www.kevingston.com
+arg.shein.com
+shein.com
+www.shein.com
+macowens.com.ar
+mlstatic.com
+mercadolibre.com.ar
+mercadolibre.com
