@@ -191,7 +191,7 @@ export default function Checkout() {
     amount: total,
     payer: {
       email: email,
-      entity_type: 'individual',
+      entityType: 'individual',
     }
   };
 
