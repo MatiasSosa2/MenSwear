@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { getCart } from "@/lib/cart";
-import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -12,7 +11,6 @@ export default function Checkout() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
-  const mpInitialized = useRef(false);
 
   // Estados de confirmación
   const [datosConfirmados, setDatosConfirmados] = useState(false);
@@ -30,20 +28,6 @@ export default function Checkout() {
   const [province, setProvince] = useState("");
   const [zip, setZip] = useState("");
   const [notes, setNotes] = useState("");
-
-  // Inicializar Mercado Pago una sola vez
-  useEffect(() => {
-    if (!mpInitialized.current && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
-      try {
-        console.log('[MP Init] Initializing with key:', process.env.NEXT_PUBLIC_MP_PUBLIC_KEY?.substring(0, 20) + '...');
-        initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
-        mpInitialized.current = true;
-        console.log('[MP Init] Successfully initialized');
-      } catch (error) {
-        console.error('[MP Init] Error initializing MercadoPago:', error);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -78,77 +62,82 @@ export default function Checkout() {
     }
   };
 
-  const onSubmitPayment = async (formData) => {
+  const handleProceedToPayment = async () => {
     if (!canPay || processing) return;
     
     setProcessing(true);
     setPaymentStatus(null);
 
     try {
-      // Agregar información adicional del cliente
-      const paymentData = {
-        ...formData,
+      // Crear preferencia de pago en Mercado Pago
+      const preferenceData = {
+        items: items.map(item => ({
+          id: item.id,
+          title: item.title,
+          quantity: item.qty,
+          unit_price: item.price,
+          currency_id: 'ARS'
+        })),
         payer: {
-          ...formData.payer,
-          entity_type: 'individual',
-          first_name: name.split(' ')[0],
-          last_name: name.split(' ').slice(1).join(' ') || name,
+          name: name,
           email: email,
           phone: {
-            area_code: phone.substring(0, 3),
-            number: phone.substring(3)
+            area_code: phone.substring(0, 3) || '11',
+            number: phone.substring(3) || phone
           },
           address: {
             street_name: address,
-            street_number: "S/N",
-            zip_code: zip,
+            city_name: city,
+            state_name: province,
+            zip_code: zip
           }
         },
-        additional_info: {
-          shipments: {
-            receiver_address: {
-              street_name: address,
-              city_name: city,
-              state_name: province,
-              zip_code: zip,
-            }
-          },
-          items: items.map(item => ({
-            id: item.id,
-            title: item.title,
-            quantity: item.qty,
-            unit_price: item.price,
-          }))
-        }
+        back_urls: {
+          success: `${window.location.origin}/checkout/success`,
+          failure: `${window.location.origin}/checkout/failure`,
+          pending: `${window.location.origin}/checkout/pending`
+        },
+        auto_return: 'approved',
+        notification_url: `${window.location.origin}/api/mercadopago/notifications`,
+        statement_descriptor: 'E-COMMERCE',
+        external_reference: `ORDER-${Date.now()}`
       };
 
-      const response = await fetch('/api/process_payment', {
+      const response = await fetch('/api/create_preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ formData: paymentData }),
+        body: JSON.stringify(preferenceData),
       });
 
       const result = await response.json();
       
-      if (result.success) {
-        setPaymentStatus({
-          type: 'success',
-          message: '¡Pago realizado con éxito! Recibirás un email de confirmación.',
-        });
-        // Limpiar carrito
-        setTimeout(() => {
-          try {
-            localStorage.removeItem('cart');
-            window.location.href = '/';
-          } catch {}
-        }, 3000);
+      if (result.success && result.init_point) {
+        // Guardar datos en localStorage para recuperar después
+        try {
+          localStorage.setItem('checkout_data', JSON.stringify({
+            name,
+            email,
+            phone,
+            address,
+            city,
+            province,
+            zip,
+            notes,
+            items,
+            total
+          }));
+        } catch {}
+        
+        // Redirigir a Mercado Pago
+        window.location.href = result.init_point;
       } else {
         setPaymentStatus({
           type: 'error',
-          message: result.message || 'Hubo un error al procesar el pago. Intenta nuevamente.',
+          message: result.message || 'Error al crear la preferencia de pago. Intenta nuevamente.',
         });
+        setProcessing(false);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -156,77 +145,8 @@ export default function Checkout() {
         type: 'error',
         message: 'Error de conexión. Verifica tu internet e intenta nuevamente.',
       });
-    } finally {
       setProcessing(false);
     }
-  };
-
-  const onErrorPayment = (error) => {
-    console.error('Payment error:', error);
-    console.error('Payment error type:', typeof error);
-    console.error('Payment error keys:', error ? Object.keys(error) : 'null');
-    console.error('Payment error JSON:', JSON.stringify(error, null, 2));
-    
-    // Determinar mensaje de error más específico
-    let errorMessage = 'Error en el formulario de pago. Verifica los datos ingresados.';
-    
-    // Verificar si el error está vacío o no tiene información útil
-    const isEmptyError = !error || (typeof error === 'object' && Object.keys(error).length === 0);
-    
-    if (!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
-      errorMessage = 'Error de configuración: Falta configurar las credenciales de Mercado Pago. Reinicia el servidor después de configurar .env.local';
-    } else if (isEmptyError) {
-      errorMessage = 'Error desconocido en el sistema de pago. Verifica que hayas completado todos los campos del formulario de pago (número de tarjeta, vencimiento, código de seguridad, nombre del titular).';
-    } else if (error?.message) {
-      errorMessage = error.message;
-    } else if (error?.cause) {
-      errorMessage = `Error: ${error.cause}`;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
-    
-    setPaymentStatus({
-      type: 'error',
-      message: errorMessage,
-    });
-    setProcessing(false);
-  };
-
-  const initialization = useMemo(() => {
-    if (total <= 0) {
-      console.log('[MP Payment] Skipping initialization - cart is empty');
-      return null;
-    }
-    const config = {
-      amount: total,
-      payer: {
-        email: email || 'test@test.com',
-        entityType: 'individual'
-      }
-    };
-    console.log('[MP Payment] Initialization config:', config);
-    console.log('[MP Payment] Items in cart:', items.length, 'Total:', total);
-    return config;
-  }, [total, email, items.length]);
-
-  const customization = useMemo(() => {
-    const config = {
-      visual: {
-        style: {
-          theme: 'default',
-        }
-      },
-      paymentMethods: {
-        maxInstallments: 12,
-        minInstallments: 1,
-      }
-    };
-    console.log('[MP Payment] Customization config:', config);
-    return config;
-  }, []);
-
-  const onReadyPayment = () => {
-    console.log('[MP Payment] Payment Brick is ready');
   };
 
   return (
@@ -458,7 +378,7 @@ export default function Checkout() {
                     <p className="text-2xl font-bold">{formatARS(total)}</p>
                   </div>
 
-                  {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
+                  {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || !process.env.MP_ACCESS_TOKEN ? (
                     <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
                       <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Configuración pendiente</p>
                       <p className="text-xs text-yellow-800 mb-3">
@@ -467,7 +387,8 @@ export default function Checkout() {
                       <div className="text-xs text-yellow-900 space-y-1">
                         <p>1. Crea archivo <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code></p>
                         <p>2. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">NEXT_PUBLIC_MP_PUBLIC_KEY=TU_KEY</code></p>
-                        <p>3. Reinicia el servidor</p>
+                        <p>3. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">MP_ACCESS_TOKEN=TU_TOKEN</code></p>
+                        <p>4. Reinicia el servidor</p>
                       </div>
                       <a 
                         href="https://www.mercadopago.com.ar/developers/panel/credentials" 
@@ -478,15 +399,29 @@ export default function Checkout() {
                         Obtener credenciales →
                       </a>
                     </div>
-                  ) : total > 0 && initialization && typeof window !== 'undefined' && mpInitialized.current ? (
-                    <Payment
-                      key={`payment-${email}-${total}`}
-                      initialization={initialization}
-                      customization={customization}
-                      onSubmit={onSubmitPayment}
-                      onReady={onReadyPayment}
-                      onError={onErrorPayment}
-                    />
+                  ) : total > 0 ? (
+                    <button
+                      onClick={handleProceedToPayment}
+                      disabled={processing}
+                      className={classNames(
+                        "w-full py-3 px-4 rounded-sm font-semibold text-sm transition-all",
+                        processing
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-blue-600 text-white hover:bg-blue-700"
+                      )}
+                    >
+                      {processing ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Procesando...
+                        </span>
+                      ) : (
+                        '💳 PAGAR CON MERCADO PAGO'
+                      )}
+                    </button>
                   ) : total <= 0 ? (
                     <div className="p-4 bg-red-50 border border-red-200 rounded-sm">
                       <p className="text-sm text-red-800">
