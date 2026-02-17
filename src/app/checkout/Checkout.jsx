@@ -1,13 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { getCart } from "@/lib/cart";
 import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
-
-// Inicializar Mercado Pago con tu Public Key
-// Reemplaza con tu VERDADERA Public Key de Mercado Pago
-if (typeof process.env.NEXT_PUBLIC_MP_PUBLIC_KEY !== 'undefined') {
-  initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
-}
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -18,6 +12,7 @@ export default function Checkout() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null);
+  const mpInitialized = useRef(false);
 
   // Section 1: Datos
   const [name, setName] = useState("");
@@ -30,6 +25,18 @@ export default function Checkout() {
   const [province, setProvince] = useState("");
   const [zip, setZip] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Inicializar Mercado Pago una sola vez
+  useEffect(() => {
+    if (!mpInitialized.current && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
+      try {
+        initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+        mpInitialized.current = true;
+      } catch (error) {
+        console.error('Error initializing MercadoPago:', error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -65,6 +72,7 @@ export default function Checkout() {
         ...formData,
         payer: {
           ...formData.payer,
+          entity_type: 'individual',
           first_name: name.split(' ')[0],
           last_name: name.split(' ').slice(1).join(' ') || name,
           email: email,
@@ -148,6 +156,7 @@ export default function Checkout() {
     amount: total,
     payer: {
       email: email,
+      entity_type: 'individual',
     }
   };
 
@@ -245,8 +254,9 @@ export default function Checkout() {
                       <p className="text-2xl font-bold">{formatARS(total)}</p>
                     </div>
 
-                    {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
+                    {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY && mpInitialized.current ? (
                       <Payment
+                        key={`payment-${email}-${total}`}
                         initialization={initialization}
                         customization={customization}
                         onSubmit={onSubmitPayment}
@@ -255,7 +265,9 @@ export default function Checkout() {
                     ) : (
                       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
                         <p className="text-sm text-yellow-800">
-                          ⚠️ Falta configurar NEXT_PUBLIC_MP_PUBLIC_KEY en las variables de entorno
+                          {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY 
+                            ? '⚠️ Falta configurar NEXT_PUBLIC_MP_PUBLIC_KEY en las variables de entorno'
+                            : 'Inicializando sistema de pago...'}
                         </p>
                       </div>
                     )}
