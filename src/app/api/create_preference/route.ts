@@ -30,19 +30,35 @@ export async function POST(req: Request) {
 
     const preferenceClient = new Preference(mpClient);
     
+    // Obtener el origin para las URLs de retorno
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const isLocal = /localhost|127\.0\.0\.1/i.test(origin);
+    
+    // Preparar back_urls
+    const backUrls = {
+      success: `${origin}/checkout/success`,
+      failure: `${origin}/checkout/failure`,
+      pending: `${origin}/checkout/pending`
+    };
+    
+    if (debug) {
+      console.log("[API] Origin:", origin);
+      console.log("[API] Back URLs:", backUrls);
+    }
+    
     // Construir el body de la preferencia
     const preferenceBody: any = {
       items: body.items,
       payer: body.payer,
-      back_urls: body.back_urls,
-      auto_return: body.auto_return || "approved",
+      back_urls: backUrls,
       statement_descriptor: body.statement_descriptor || "E-COMMERCE",
       external_reference: body.external_reference || `ORDER-${Date.now()}`,
     };
-
-    // Solo agregar notification_url si no estamos en localhost
-    const origin = req.headers.get("origin") || "";
-    const isLocal = /localhost|127\.0\.0\.1/i.test(origin);
+    
+    // Solo agregar auto_return si no es local (Mercado Pago puede rechazarlo con localhost)
+    if (!isLocal) {
+      preferenceBody.auto_return = "approved";
+    }
     
     if (!isLocal && body.notification_url) {
       preferenceBody.notification_url = body.notification_url;
@@ -50,6 +66,7 @@ export async function POST(req: Request) {
 
     if (debug) {
       console.log("[API] create_preference - Creando preferencia...");
+      console.log("[API] Preference body:", JSON.stringify(preferenceBody, null, 2));
     }
 
     const pref = await preferenceClient.create({ body: preferenceBody });

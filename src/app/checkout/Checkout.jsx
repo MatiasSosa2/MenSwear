@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { getCart } from "@/lib/cart";
+import { getShippingQuote } from "@/lib/shipping";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -29,6 +30,12 @@ export default function Checkout() {
   const [zip, setZip] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Shipping
+  const [shippingCost, setShippingCost] = useState(0);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingError, setShippingError] = useState("");
+  const [shippingDetails, setShippingDetails] = useState(null);
+
   useEffect(() => {
     try {
       setItems(getCart());
@@ -41,9 +48,49 @@ export default function Checkout() {
     return items.reduce((acc, it) => acc + (it.price || 0) * (it.qty || 0), 0);
   }, [items]);
 
-  const shippingLabel = "GRATIS";
-  const shippingAmount = 0;
-  const total = subtotal + shippingAmount;
+  // Calcular envío cuando se completa código postal y provincia
+  useEffect(() => {
+    const calculateShipping = async () => {
+      if (zip.length >= 4 && province.length >= 2) {
+        setShippingLoading(true);
+        setShippingError("");
+        
+        try {
+          // Calcular subtotal actual dentro del efecto
+          const currentSubtotal = items.reduce((acc, it) => acc + (it.price || 0) * (it.qty || 0), 0);
+          
+          const quote = await getShippingQuote({
+            destination: {
+              postalCode: zip,
+              province: province
+            },
+            declared_value: currentSubtotal
+          });
+
+          if (quote.success) {
+            setShippingCost(quote.cost);
+            setShippingDetails(quote);
+          } else {
+            setShippingError(quote.error || "No se pudo calcular el envío");
+            setShippingCost(0);
+          }
+        } catch (error) {
+          setShippingError("Error al calcular envío");
+          setShippingCost(0);
+        } finally {
+          setShippingLoading(false);
+        }
+      } else {
+        setShippingCost(0);
+        setShippingDetails(null);
+      }
+    };
+
+    const timer = setTimeout(calculateShipping, 500); // Debounce
+    return () => clearTimeout(timer);
+  }, [zip, province, items]);
+
+  const total = subtotal + shippingCost;
 
   const isValidEmail = (v) => /.+@.+\..+/.test(v.trim());
   const datosValidos = name.trim().length >= 2 && isValidEmail(email) && phone.trim().length >= 7;
@@ -69,15 +116,29 @@ export default function Checkout() {
     setPaymentStatus(null);
 
     try {
+      // Preparar items para Mercado Pago
+      const mpItems = items.map(item => ({
+        id: item.id,
+        title: item.title,
+        quantity: item.qty,
+        unit_price: item.price,
+        currency_id: 'ARS'
+      }));
+
+      // Agregar el envío como un item adicional si existe
+      if (shippingCost > 0 && shippingDetails) {
+        mpItems.push({
+          id: 'shipping',
+          title: `Envío - ${shippingDetails.service} (${shippingDetails.deliveryDays} días)`,
+          quantity: 1,
+          unit_price: shippingCost,
+          currency_id: 'ARS'
+        });
+      }
+
       // Crear preferencia de pago en Mercado Pago
       const preferenceData = {
-        items: items.map(item => ({
-          id: item.id,
-          title: item.title,
-          quantity: item.qty,
-          unit_price: item.price,
-          currency_id: 'ARS'
-        })),
+        items: mpItems,
         payer: {
           name: name,
           email: email,
@@ -91,6 +152,19 @@ export default function Checkout() {
             state_name: province,
             zip_code: zip
           }
+        },
+        metadata: {
+          // Datos adicionales para procesar después del pago
+          shipping_cost: shippingCost,
+          shipping_service: shippingDetails?.service || 'N/A',
+          shipping_days: shippingDetails?.deliveryDays || 'N/A',
+          buyer_name: name,
+          buyer_phone: phone,
+          shipping_address: address,
+          shipping_city: city,
+          shipping_province: province,
+          shipping_zip: zip,
+          shipping_notes: notes
         },
         back_urls: {
           success: `${window.location.origin}/checkout/success`,
@@ -183,7 +257,7 @@ export default function Checkout() {
           <span className="text-gray-600">{summaryOpen ? "Cerrar" : "Ver"}</span>
         </button>
         {summaryOpen && (
-          <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
+          <Summary items={items} subtotal={subtotal} shippingCost={shippingCost} shippingLoading={shippingLoading} shippingError={shippingError} shippingDetails={shippingDetails} total={total} removeItem={removeItem} />
         )}
       </div>
 
@@ -311,7 +385,7 @@ export default function Checkout() {
           {!compraConfirmada ? (
             <div className={classNames("border rounded-sm p-4 mb-4", datosConfirmados && entregaConfirmada ? "border-gray-200" : "border-gray-300")}>
               <div className={classNames("space-y-4", (!datosConfirmados || !entregaConfirmada) && "opacity-50 pointer-events-none")}>
-                <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} removeItem={removeItem} />
+                <Summary items={items} subtotal={subtotal} shippingCost={shippingCost} shippingLoading={shippingLoading} shippingError={shippingError} shippingDetails={shippingDetails} total={total} removeItem={removeItem} />
                 
                 {items.length > 0 && (
                   <button
@@ -378,28 +452,7 @@ export default function Checkout() {
                     <p className="text-2xl font-bold">{formatARS(total)}</p>
                   </div>
 
-                  {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || !process.env.MP_ACCESS_TOKEN ? (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
-                      <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Configuración pendiente</p>
-                      <p className="text-xs text-yellow-800 mb-3">
-                        Para aceptar pagos, necesitas configurar tus credenciales de Mercado Pago.
-                      </p>
-                      <div className="text-xs text-yellow-900 space-y-1">
-                        <p>1. Crea archivo <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code></p>
-                        <p>2. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">NEXT_PUBLIC_MP_PUBLIC_KEY=TU_KEY</code></p>
-                        <p>3. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">MP_ACCESS_TOKEN=TU_TOKEN</code></p>
-                        <p>4. Reinicia el servidor</p>
-                      </div>
-                      <a 
-                        href="https://www.mercadopago.com.ar/developers/panel/credentials" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-block text-xs font-semibold text-yellow-900 underline hover:text-yellow-700"
-                      >
-                        Obtener credenciales →
-                      </a>
-                    </div>
-                  ) : total > 0 ? (
+                  {total > 0 ? (
                     <button
                       onClick={handleProceedToPayment}
                       disabled={processing}
@@ -493,7 +546,7 @@ function Input({ label, value, onChange, placeholder, type = "text", textarea = 
   );
 }
 
-function Summary({ items, subtotal, shippingLabel, shippingAmount, total, removeItem }) {
+function Summary({ items, subtotal, shippingCost, shippingLoading, shippingError, shippingDetails, total, removeItem }) {
   return (
     <div className="border border-gray-200 rounded-sm p-4 bg-[#F9F9F9]">
       <h3 className="text-sm font-bold mb-3 tracking-wider">RESUMEN</h3>
@@ -532,7 +585,27 @@ function Summary({ items, subtotal, shippingLabel, shippingAmount, total, remove
       </div>
       <div className="mt-4 space-y-2 text-sm">
         <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">{formatARS(subtotal)}</span></div>
-        <div className="flex justify-between"><span className="font-semibold">Envío</span><span className="font-semibold">{shippingLabel}</span></div>
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">Envío</span>
+          <span className="font-semibold">
+            {shippingLoading ? (
+              <span className="text-xs text-gray-500">Calculando...</span>
+            ) : shippingError ? (
+              <span className="text-xs text-red-600" title={shippingError}>Error</span>
+            ) : shippingCost > 0 ? (
+              <span className="flex flex-col items-end">
+                <span>{formatARS(shippingCost)}</span>
+                {shippingDetails && (
+                  <span className="text-xs text-gray-500">
+                    {shippingDetails.service} ({shippingDetails.deliveryDays} días)
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-xs text-gray-500">Ingresá CP</span>
+            )}
+          </span>
+        </div>
         <div className="pt-2 border-t border-gray-200 flex justify-between"><span className="font-bold">Total</span><span className="font-bold">{formatARS(total)}</span></div>
       </div>
     </div>

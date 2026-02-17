@@ -33,93 +33,140 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## 💳 Mercado Pago - Checkout Bricks
+## � E-commerce con Mercado Pago y Andreani
 
-Este proyecto integra **Mercado Pago Checkout Bricks** para procesar pagos directamente en tu página sin redirecciones.
+### ✨ Características implementadas
 
-### ✨ Características
-
-- ✅ **Pago integrado** - Formulario de pago dentro de tu sitio
-- ✅ **Sin redirecciones** - Usuario nunca sale de tu página
-- ✅ **Múltiples métodos** - Tarjetas, efectivo, transferencias
-- ✅ **Personalizable** - Adapta colores y estilos
+- ✅ **Catálogo de productos** - Navegación por categorías
+- ✅ **Carrito de compras** - Gestión completa del carrito
+- ✅ **Mercado Pago Checkout Pro** - Pagos con redirección segura
+- ✅ **Cálculo de envío Andreani** - Cotización automática por código postal
+- ✅ **Sistema de notificaciones** - Webhooks para confirmación de pagos
 - ✅ **Responsive** - Funciona en mobile y desktop
-- ✅ **Seguro** - PCI-DSS compliant
+- ✅ **TypeScript** - Código tipado y seguro
 
-### 🚀 Configuración rápida
+### 🚀 Setup rápido
 
-1. **Crea `.env.local`** en la raíz del proyecto:
-
+1. **Instalar dependencias**:
 ```bash
-cp .env.example .env.local
+npm install
 ```
 
-2. **Obtén tus credenciales** en [Mercado Pago Developers](https://www.mercadopago.com.ar/developers/panel/credentials)
-
-3. **Agrega las credenciales** a `.env.local`:
-
+2. **Configurar credenciales** en `.env.local`:
 ```env
-NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-MP_ACCESS_TOKEN=APP_USR-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Mercado Pago (OBLIGATORIO)
+NEXT_PUBLIC_MP_PUBLIC_KEY=TU_PUBLIC_KEY
+MP_ACCESS_TOKEN=TU_ACCESS_TOKEN
+
+# Email del dueño (OBLIGATORIO)
+OWNER_EMAIL=tu-email@ejemplo.com
+
+# Andreani en modo MOCK (OPCIONAL - ya configurado)
+ANDREANI_USE_MOCK=true
+
+# Resend para emails (OPCIONAL)
+# RESEND_API_KEY=re_xxxxx
 ```
 
-4. **Inicia el servidor**:
-
+3. **Iniciar servidor**:
 ```bash
 npm run dev
 ```
 
-5. **Prueba el checkout** en [http://localhost:3000/checkout](http://localhost:3000/checkout)
+4. **Abrir** [http://localhost:3000](http://localhost:3000)
 
-### 🧪 Tarjetas de prueba
+### 📚 Guías de configuración
 
-| Tarjeta | Número | CVV | Vencimiento | Resultado |
-|---------|--------|-----|-------------|-----------|
-| Mastercard | 5031 7557 3453 0604 | 123 | 11/25 | ✅ Aprobado |
-| Visa | 4509 9535 6623 3704 | 123 | 11/25 | ✅ Aprobado |
-| Rechazada | 5031 4332 1540 6351 | 123 | 11/25 | ❌ Rechazado |
-
-**Titular**: Cualquier nombre  
-**DNI**: 12345678
-
-### 📚 Documentación completa
-
-- **[MERCADOPAGO_SETUP.md](MERCADOPAGO_SETUP.md)** - Guía completa de configuración
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Instrucciones para deploy en Vercel
+| Archivo | Descripción |
+|---------|-------------|
+| [MERCADOPAGO_SETUP.md](MERCADOPAGO_SETUP.md) | Configuración de Mercado Pago |
+| [ANDREANI_SETUP.md](ANDREANI_SETUP.md) | Integración de envíos |
+| [NOTIFICATIONS_SETUP.md](NOTIFICATIONS_SETUP.md) | Sistema de notificaciones |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Deploy en Vercel |
 
 ### 🏗️ Arquitectura
 
-**Frontend** (`src/app/checkout/Checkout.jsx`):
-- Usa `@mercadopago/sdk-react` 
-- Componente `<Payment>` renderiza el formulario
-- Recolecta datos del cliente y envío
-- Envía pago a API backend
+#### Frontend
+- **`src/app/checkout/Checkout.jsx`** - Checkout con formulario de datos y envío
+- **`src/components/FloatingCart.tsx`** - Carrito flotante
+- **`src/lib/cart.ts`** - Gestión de carrito (localStorage)
+- **`src/lib/shipping.ts`** - Cliente para cotización de envíos
 
-**Backend** (`src/app/api/process_payment/route.ts`):
-- Procesa el pago con Mercado Pago SDK
-- Valida status y maneja errores
-- Retorna resultado al frontend
+#### Backend (API Routes)
+- **`src/app/api/create_preference/route.ts`** - Crea preferencia de pago en MP
+- **`src/app/api/shipping/quote/route.ts`** - Cotiza envío con Andreani
+- **`src/app/api/webhooks/mercadopago/route.ts`** - Recibe notificaciones de pagos
 
-### 🔧 Personalización
+### 🔄 Flujo completo de compra
 
-Edita `src/app/checkout/Checkout.jsx` para cambiar colores:
-
-```javascript
-const customization = {
-  visual: {
-    style: {
-      theme: 'default',
-      customVariables: {
-        baseColor: '#0A1F44', // Tu color de marca
-      }
-    }
-  }
-};
+```
+1. Cliente navega productos → Agrega al carrito
+   ↓
+2. Va a /checkout → Completa datos y dirección de envío
+   ↓
+3. Sistema calcula costo de envío (Andreani API)
+   ↓
+4. Cliente ve total (productos + envío) → "Proceder al pago"
+   ↓
+5. Redirección a Mercado Pago Checkout Pro
+   ↓
+6. Cliente paga con su método preferido
+   ↓
+7. MP envía notificación al webhook
+   ↓
+8. Sistema:
+   - 📧 Envía email al dueño con datos del pedido
+   - 📧 Envía confirmación al cliente
+   - 📦 (Opcional) Crea orden de envío en Andreani
+   ↓
+9. Dueño prepara y despacha el pedido
 ```
 
-### ⚠️ Importante
+### 🎯 Estado actual
 
-- En **desarrollo**: Usa credenciales de **prueba**
-- En **producción**: Cambia a credenciales de **producción**
-- `NEXT_PUBLIC_MP_PUBLIC_KEY` debe tener el prefijo `NEXT_PUBLIC_`
-- Reinicia el servidor después de cambiar `.env.local`
+#### ✅ Completamente funcional
+- Catálogo y navegación de productos
+- Carrito de compras (persiste en localStorage)
+- Checkout con formulario de datos
+- Cotización de envío en tiempo real (MOCK mode)
+- Pago con Mercado Pago (Checkout Pro)
+- Total incluye productos + envío
+- Webhook recibe confirmaciones (loguea en consola)
+
+#### ⏳ Requiere configuración adicional
+- **Webhook URL en Mercado Pago**: Necesitas dominio público o ngrok (ver [NOTIFICATIONS_SETUP.md](NOTIFICATIONS_SETUP.md))
+- **Email notifications**: Configurar Resend u otro servicio (opcional)
+- **Andreani real**: Cambiar `ANDREANI_USE_MOCK=false` y agregar credenciales (opcional)
+
+### 🧪 Testing
+
+#### Probar compra completa:
+1. Ir a [http://localhost:3000](http://localhost:3000)
+2. Agregar productos al carrito
+3. Ir a Checkout
+4. Completar formulario (usar CP válido ej: 1425 CABA)
+5. Ver costo de envío calculado
+6. Click "Proceder al Pago"
+7. Pagar con tarjeta de prueba (ver MERCADOPAGO_SETUP.md)
+8. Ver notificación en consola del servidor
+
+#### Tarjetas de prueba:
+```
+Mastercard Aprobada: 5031 7557 3453 0604
+CVV: 123 | Vencimiento: 11/25 | DNI: 12345678
+```
+
+### 🔒 Seguridad
+
+- Variables de entorno nunca se exponen al cliente
+- `MP_ACCESS_TOKEN` solo se usa en servidor
+- Webhooks validan origen de Mercado Pago
+- No se almacenan datos de tarjetas
+
+### ⚠️ Importante para producción
+
+1. **Cambiar a credenciales de producción** en Mercado Pago
+2. **Configurar webhook URL** con dominio real
+3. **Cambiar `DEBUG_CHECKOUT=false`**
+4. **Configurar servicio de email** (Resend, SendGrid, etc.)
+5. **Opcional**: Integrar Andreani real si tienes contrato

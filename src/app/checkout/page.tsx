@@ -120,10 +120,11 @@ function CheckoutContent() {
 
   useEffect(() => {
     if (debug) console.log("[Checkout] sdkReady/amount changed", { sdkReady, amount, traceId });
-    if (AUTO_RENDER && sdkReady && Number(amount) > 0 && !autoRenderedRef.current) {
-      autoRenderedRef.current = true;
-      renderBrick();
-    }
+    // Deshabilitar auto-render: el usuario debe presionar "Pagar ahora" en el paso 3
+    // if (AUTO_RENDER && sdkReady && Number(amount) > 0 && !autoRenderedRef.current) {
+    //   autoRenderedRef.current = true;
+    //   renderBrick();
+    // }
   }, [sdkReady, amount, AUTO_RENDER]);
 
   useEffect(() => {
@@ -194,13 +195,20 @@ function CheckoutContent() {
   };
 
   const renderBrick = () => {
-    if (!bricksBuilderRef.current) return;
+    if (!bricksBuilderRef.current) {
+      setStatusMsg("SDK de Mercado Pago no está listo");
+      return;
+    }
     if (brickMountedRef.current) {
       if (debug) console.warn("[Checkout] Brick already mounted, skipping re-render");
       return;
     }
+    if (!email || !buyerName) {
+      setStatusMsg("Completa tus datos antes de proceder al pago");
+      return;
+    }
     setStatusMsg("");
-    if (debug) console.log("[Checkout] Render Brick", { amount: Number(amount || 0), email: email || "", traceId });
+    if (debug) console.log("[Checkout] Render Brick", { amount: Number(amount || 0), email, name: buyerName, traceId });
 
     try {
       bricksBuilderRef.current.create("payment", containerId, {
@@ -208,7 +216,6 @@ function CheckoutContent() {
         amount: Number(amount || 0),
         payer: {
           email: email || "",
-          entityType: "individual",
         },
       },
       callbacks: {
@@ -221,7 +228,7 @@ function CheckoutContent() {
           setStatusMsg("Procesando pago...");
           if (debug) console.log("[Checkout] onSubmit", { keys: Object.keys(formData || {}), traceId });
           try {
-            const res = await fetch("/process_payment", {
+            const res = await fetch("/api/process_payment", {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-Trace-Id": traceId || "" },
               body: JSON.stringify({ formData }),
@@ -499,11 +506,16 @@ function CheckoutContent() {
                 <div>
                   <button
                     onClick={renderBrick}
-                    disabled={!sdkReady || brickMountedRef.current || amount <= 0}
-                    style={{ padding: "12px 16px", width: "100%", background: !sdkReady || brickMountedRef.current || amount <= 0 ? "#9ca3af" : "#111827", color: "#fff", border: 0, borderRadius: 10, cursor: !sdkReady || brickMountedRef.current || amount <= 0 ? "not-allowed" : "pointer", fontWeight: 600 }}
+                    disabled={!sdkReady || brickMountedRef.current || amount <= 0 || !email || !buyerName}
+                    style={{ padding: "12px 16px", width: "100%", background: !sdkReady || brickMountedRef.current || amount <= 0 || !email || !buyerName ? "#9ca3af" : "#111827", color: "#fff", border: 0, borderRadius: 10, cursor: !sdkReady || brickMountedRef.current || amount <= 0 || !email || !buyerName ? "not-allowed" : "pointer", fontWeight: 600, marginBottom: 8 }}
                   >
-                    {brickMountedRef.current ? "Brick listo" : "Pagar ahora"}
+                    {brickMountedRef.current ? "Formulario de pago cargado ✓" : "Cargar formulario de pago"}
                   </button>
+                  {(!email || !buyerName) && (
+                    <p style={{ fontSize: 12, color: "#ef4444", marginTop: 4 }}>
+                      ⚠️ Completa tus datos en los pasos anteriores
+                    </p>
+                  )}
                 </div>
               )}
               {!USE_CHECKOUT_PRO_ONLY && (
