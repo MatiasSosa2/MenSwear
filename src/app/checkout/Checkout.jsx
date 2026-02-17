@@ -193,6 +193,10 @@ export default function Checkout() {
   };
 
   const initialization = useMemo(() => {
+    if (total <= 0) {
+      console.log('[MP Payment] Skipping initialization - cart is empty');
+      return null;
+    }
     const config = {
       amount: total,
       payer: {
@@ -474,7 +478,7 @@ export default function Checkout() {
                         Obtener credenciales →
                       </a>
                     </div>
-                  ) : total > 0 && typeof window !== 'undefined' && mpInitialized.current ? (
+                  ) : total > 0 && initialization && typeof window !== 'undefined' && mpInitialized.current ? (
                     <Payment
                       key={`payment-${email}-${total}`}
                       initialization={initialization}
