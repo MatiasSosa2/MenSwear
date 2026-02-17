@@ -281,6 +281,11 @@ export default function Checkout() {
 
           {/* 2. ENTREGA (habilitar solo si 1 confirmada) */}
           <SectionTitle number={2} title="ENTREGA" />
+          {!entregaConfirmada ? (
+            <div className={classNames("relative border rounded-sm p-4 mb-4", datosConfirmados ? "border-gray-200" : "border-gray-300")}> 
+              <div className={classNames("space-y-4", !datosConfirmados && "opacity-50 pointer-events-none")}> 
+                <Input label="Dirección" value={address} onChange={setAddress} placeholder="CALLE 123" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Input label="Ciudad" value={city} onChange={setCity} placeholder="CABA" />
                   <Input label="Provincia" value={province} onChange={setProvince} placeholder="BUENOS AIRES" />
                   <Input label="Código Postal" value={zip} onChange={setZip} placeholder="1000" />
