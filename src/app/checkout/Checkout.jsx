@@ -165,14 +165,19 @@ export default function Checkout() {
     // Determinar mensaje de error más específico
     let errorMessage = 'Error en el formulario de pago. Verifica los datos ingresados.';
     
-    if (error?.message) {
+    // Verificar si el error está vacío o no tiene información útil
+    const isEmptyError = !error || (typeof error === 'object' && Object.keys(error).length === 0);
+    
+    if (!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
+      errorMessage = 'Error de configuración: Falta configurar las credenciales de Mercado Pago. Reinicia el servidor después de configurar .env.local';
+    } else if (isEmptyError) {
+      errorMessage = 'Error desconocido en el sistema de pago. Verifica que hayas completado todos los campos del formulario de pago (número de tarjeta, vencimiento, código de seguridad, nombre del titular).';
+    } else if (error?.message) {
       errorMessage = error.message;
     } else if (error?.cause) {
       errorMessage = `Error: ${error.cause}`;
     } else if (typeof error === 'string') {
       errorMessage = error;
-    } else if (!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
-      errorMessage = 'Error de configuración: Falta configurar las credenciales de Mercado Pago. Ver documentación.';
     }
     
     setPaymentStatus({
