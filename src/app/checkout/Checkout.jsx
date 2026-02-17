@@ -201,8 +201,9 @@ export default function Checkout() {
       }
     };
     console.log('[MP Payment] Initialization config:', config);
+    console.log('[MP Payment] Items in cart:', items.length, 'Total:', total);
     return config;
-  }, [total, email]);
+  }, [total, email, items.length]);
 
   const customization = useMemo(() => {
     const config = {
@@ -227,8 +228,29 @@ export default function Checkout() {
   return (
     <div className="bg-white min-h-screen">
       <div className="container mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
-        {/* Mobile summary toggle */}
-      <div className="md:hidden mb-3 sm:mb-4">
+        
+        {/* Mensaje si el carrito está vacío */}
+        {items.length === 0 && (
+          <div className="max-w-md mx-auto mt-12 p-6 bg-yellow-50 border border-yellow-200 rounded-sm text-center">
+            <div className="text-4xl mb-4">🛒</div>
+            <h2 className="text-xl font-bold mb-2">Tu carrito está vacío</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Agrega productos a tu carrito para continuar con la compra.
+            </p>
+            <a
+              href="/productos"
+              className="inline-block bg-black text-white px-6 py-3 rounded-sm font-semibold text-sm hover:opacity-90 transition-opacity"
+            >
+              Ver productos
+            </a>
+          </div>
+        )}
+
+        {/* Contenido del checkout solo si hay items */}
+        {items.length > 0 && (
+          <>
+            {/* Mobile summary toggle */}
+            <div className="md:hidden mb-3 sm:mb-4">
         <button
           onClick={() => setSummaryOpen((s) => !s)}
           className="w-full flex items-center justify-between border border-gray-200 rounded-sm px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold hover:bg-gray-50 transition-colors"
@@ -452,7 +474,7 @@ export default function Checkout() {
                         Obtener credenciales →
                       </a>
                     </div>
-                  ) : typeof window !== 'undefined' && mpInitialized.current ? (
+                  ) : total > 0 && typeof window !== 'undefined' && mpInitialized.current ? (
                     <Payment
                       key={`payment-${email}-${total}`}
                       initialization={initialization}
@@ -461,6 +483,12 @@ export default function Checkout() {
                       onReady={onReadyPayment}
                       onError={onErrorPayment}
                     />
+                  ) : total <= 0 ? (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-sm">
+                      <p className="text-sm text-red-800">
+                        ⚠️ No se puede procesar el pago: el carrito está vacío.
+                      </p>
+                    </div>
                   ) : (
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-sm">
                       <p className="text-sm text-blue-800">
@@ -471,7 +499,7 @@ export default function Checkout() {
                 </>
               )}
 
-              {total <= 0 && (
+              {!canPay && total <= 0 && (
                 <p className="text-xs text-gray-500">Tu carrito está vacío.</p>
               )}
             </div>
@@ -485,7 +513,8 @@ export default function Checkout() {
             )}
           </div>
         </div>
-      </div>
+          </>
+        )}
       </div>
     </div>
   );
