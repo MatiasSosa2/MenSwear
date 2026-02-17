@@ -35,10 +35,12 @@ export default function Checkout() {
   useEffect(() => {
     if (!mpInitialized.current && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
       try {
+        console.log('[MP Init] Initializing with key:', process.env.NEXT_PUBLIC_MP_PUBLIC_KEY?.substring(0, 20) + '...');
         initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
         mpInitialized.current = true;
+        console.log('[MP Init] Successfully initialized');
       } catch (error) {
-        console.error('Error initializing MercadoPago:', error);
+        console.error('[MP Init] Error initializing MercadoPago:', error);
       }
     }
   }, []);
@@ -161,6 +163,9 @@ export default function Checkout() {
 
   const onErrorPayment = (error) => {
     console.error('Payment error:', error);
+    console.error('Payment error type:', typeof error);
+    console.error('Payment error keys:', error ? Object.keys(error) : 'null');
+    console.error('Payment error JSON:', JSON.stringify(error, null, 2));
     
     // Determinar mensaje de error más específico
     let errorMessage = 'Error en el formulario de pago. Verifica los datos ingresados.';
@@ -187,24 +192,36 @@ export default function Checkout() {
     setProcessing(false);
   };
 
-  const initialization = {
-    amount: total,
-    payer: {
-      email: email,
-      entityType: 'individual',
-    }
-  };
-
-  const customization = {
-    visual: {
-      style: {
-        theme: 'default',
+  const initialization = useMemo(() => {
+    const config = {
+      amount: total,
+      payer: {
+        email: email || 'test@test.com',
+        entityType: 'individual'
       }
-    },
-    paymentMethods: {
-      maxInstallments: 12,
-      minInstallments: 1,
-    }
+    };
+    console.log('[MP Payment] Initialization config:', config);
+    return config;
+  }, [total, email]);
+
+  const customization = useMemo(() => {
+    const config = {
+      visual: {
+        style: {
+          theme: 'default',
+        }
+      },
+      paymentMethods: {
+        maxInstallments: 12,
+        minInstallments: 1,
+      }
+    };
+    console.log('[MP Payment] Customization config:', config);
+    return config;
+  }, []);
+
+  const onReadyPayment = () => {
+    console.log('[MP Payment] Payment Brick is ready');
   };
 
   return (
@@ -441,6 +458,7 @@ export default function Checkout() {
                       initialization={initialization}
                       customization={customization}
                       onSubmit={onSubmitPayment}
+                      onReady={onReadyPayment}
                       onError={onErrorPayment}
                     />
                   ) : (
