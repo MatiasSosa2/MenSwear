@@ -33,40 +33,93 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## Mercado Pago (Payment Bricks)
+## 💳 Mercado Pago - Checkout Bricks
 
-Integración de Checkout API con Payment Brick para experiencia transparente.
+Este proyecto integra **Mercado Pago Checkout Bricks** para procesar pagos directamente en tu página sin redirecciones.
 
-### Variables de entorno
+### ✨ Características
 
-Crear `.env.local` en la raíz del proyecto con:
+- ✅ **Pago integrado** - Formulario de pago dentro de tu sitio
+- ✅ **Sin redirecciones** - Usuario nunca sale de tu página
+- ✅ **Múltiples métodos** - Tarjetas, efectivo, transferencias
+- ✅ **Personalizable** - Adapta colores y estilos
+- ✅ **Responsive** - Funciona en mobile y desktop
+- ✅ **Seguro** - PCI-DSS compliant
 
+### 🚀 Configuración rápida
+
+1. **Crea `.env.local`** en la raíz del proyecto:
+
+```bash
+cp .env.example .env.local
 ```
-NEXT_PUBLIC_MP_PUBLIC_KEY=TEST-XXXXXXXXXXXXXXX
-MP_ACCESS_TOKEN=APP_USR-XXXXXXXXXXXXXXX
+
+2. **Obtén tus credenciales** en [Mercado Pago Developers](https://www.mercadopago.com.ar/developers/panel/credentials)
+
+3. **Agrega las credenciales** a `.env.local`:
+
+```env
+NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MP_ACCESS_TOKEN=APP_USR-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-### Instalación
+4. **Inicia el servidor**:
 
-```
-npm install mercadopago
+```bash
 npm run dev
 ```
 
-### Frontend
+5. **Prueba el checkout** en [http://localhost:3000/checkout](http://localhost:3000/checkout)
 
-- Página: `src/app/checkout/page.tsx` carga el SDK v2 (`https://sdk.mercadopago.com/js/v2`) y renderiza el Payment Brick dentro de `#paymentBrick_container`.
-- Configura `initialization` con `amount` y `payer.email` y `callbacks` (`onReady`, `onSubmit`, `onError`).
-- En `onSubmit` se hace `POST` a `/process_payment` (reescritura a `/api/process_payment`).
+### 🧪 Tarjetas de prueba
 
-### Backend
+| Tarjeta | Número | CVV | Vencimiento | Resultado |
+|---------|--------|-----|-------------|-----------|
+| Mastercard | 5031 7557 3453 0604 | 123 | 11/25 | ✅ Aprobado |
+| Visa | 4509 9535 6623 3704 | 123 | 11/25 | ✅ Aprobado |
+| Rechazada | 5031 4332 1540 6351 | 123 | 11/25 | ❌ Rechazado |
 
-- Endpoint: `/api/process_payment` en `src/app/api/process_payment/route.ts`.
-- Usa la librería oficial `mercadopago` y el `MP_ACCESS_TOKEN` para crear el pago.
-- Maneja estados `approved`, `rejected`, `pending`/`in_process` y mapea errores comunes de tarjetas (fondos insuficientes, tarjeta vencida, etc.).
+**Titular**: Cualquier nombre  
+**DNI**: 12345678
 
-### Prueba rápida
+### 📚 Documentación completa
 
-1. Completa el e-mail del pagador y monto en `/checkout`.
-2. Renderiza el Brick y elige el medio de pago (tarjeta, Rapipago/Pago Fácil, transferencia).
-3. Confirma el pago; verás el estado retornado por el backend.
+- **[MERCADOPAGO_SETUP.md](MERCADOPAGO_SETUP.md)** - Guía completa de configuración
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Instrucciones para deploy en Vercel
+
+### 🏗️ Arquitectura
+
+**Frontend** (`src/app/checkout/Checkout.jsx`):
+- Usa `@mercadopago/sdk-react` 
+- Componente `<Payment>` renderiza el formulario
+- Recolecta datos del cliente y envío
+- Envía pago a API backend
+
+**Backend** (`src/app/api/process_payment/route.ts`):
+- Procesa el pago con Mercado Pago SDK
+- Valida status y maneja errores
+- Retorna resultado al frontend
+
+### 🔧 Personalización
+
+Edita `src/app/checkout/Checkout.jsx` para cambiar colores:
+
+```javascript
+const customization = {
+  visual: {
+    style: {
+      theme: 'default',
+      customVariables: {
+        baseColor: '#0A1F44', // Tu color de marca
+      }
+    }
+  }
+};
+```
+
+### ⚠️ Importante
+
+- En **desarrollo**: Usa credenciales de **prueba**
+- En **producción**: Cambia a credenciales de **producción**
+- `NEXT_PUBLIC_MP_PUBLIC_KEY` debe tener el prefijo `NEXT_PUBLIC_`
+- Reinicia el servidor después de cambiar `.env.local`

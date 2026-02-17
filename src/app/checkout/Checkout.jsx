@@ -1,6 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { getCart } from "@/lib/cart";
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+
+// Inicializar Mercado Pago con tu Public Key
+// Reemplaza con tu VERDADERA Public Key de Mercado Pago
+if (typeof process.env.NEXT_PUBLIC_MP_PUBLIC_KEY !== 'undefined') {
+  initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
+}
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -9,6 +16,8 @@ function classNames(...classes) {
 export default function Checkout() {
   const [items, setItems] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
 
   // Section 1: Datos
   const [name, setName] = useState("");
@@ -44,18 +53,114 @@ export default function Checkout() {
 
   const canPay = datosValidos && entregaValida && total > 0;
 
-  const handlePay = async () => {
-    if (!canPay) return;
+  const onSubmitPayment = async (formData) => {
+    if (!canPay || processing) return;
+    
+    setProcessing(true);
+    setPaymentStatus(null);
+
     try {
-      const res = await fetch("/api/create_preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: total, email }),
+      // Agregar información adicional del cliente
+      const paymentData = {
+        ...formData,
+        payer: {
+          ...formData.payer,
+          first_name: name.split(' ')[0],
+          last_name: name.split(' ').slice(1).join(' ') || name,
+          email: email,
+          phone: {
+            area_code: phone.substring(0, 3),
+            number: phone.substring(3)
+          },
+          address: {
+            street_name: address,
+            street_number: "S/N",
+            zip_code: zip,
+          }
+        },
+        additional_info: {
+          shipments: {
+            receiver_address: {
+              street_name: address,
+              city_name: city,
+              state_name: province,
+              zip_code: zip,
+            }
+          },
+          items: items.map(item => ({
+            id: item.id,
+            title: item.title,
+            quantity: item.qty,
+            unit_price: item.price,
+          }))
+        }
+      };
+
+      const response = await fetch('/api/process_payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formData: paymentData }),
       });
-      const data = await res.json();
-      if (!res.ok || !data?.init_point) return;
-      window.location.assign(data.init_point);
-    } catch {}
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setPaymentStatus({
+          type: 'success',
+          message: '¡Pago realizado con éxito! Recibirás un email de confirmación.',
+        });
+        // Limpiar carrito
+        setTimeout(() => {
+          try {
+            localStorage.removeItem('cart');
+            window.location.href = '/';
+          } catch {}
+        }, 3000);
+      } else {
+        setPaymentStatus({
+          type: 'error',
+          message: result.message || 'Hubo un error al procesar el pago. Intenta nuevamente.',
+        });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setPaymentStatus({
+        type: 'error',
+        message: 'Error de conexión. Verifica tu internet e intenta nuevamente.',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const onErrorPayment = (error) => {
+    console.error('Payment error:', error);
+    setPaymentStatus({
+      type: 'error',
+      message: 'Error en el formulario de pago. Verifica los datos ingresados.',
+    });
+    setProcessing(false);
+  };
+
+  const initialization = {
+    amount: total,
+    payer: {
+      email: email,
+    }
+  };
+
+  const customization = {
+    visual: {
+      style: {
+        theme: 'default',
+      }
+    },
+    paymentMethods: {
+      maxInstallments: 12,
+      minInstallments: 1,
+    }
   };
 
   return (
@@ -122,26 +227,41 @@ export default function Checkout() {
               {/* Resumen integrado (izquierda) */}
               <Summary items={items} subtotal={subtotal} shippingLabel={shippingLabel} shippingAmount={shippingAmount} total={total} />
 
-              {/* Acción de pago (derecha) */}
+              {/* Formulario de pago (derecha) */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between border border-gray-200 rounded-sm px-4 py-3">
-                  <div>
-                    <p className="text-xs text-gray-500">TOTAL A PAGAR</p>
-                    <p className="text-lg font-bold">{formatARS(total)}</p>
+                {paymentStatus && (
+                  <div className={classNames(
+                    "p-4 rounded-sm border",
+                    paymentStatus.type === 'success' ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"
+                  )}>
+                    <p className="text-sm font-medium">{paymentStatus.message}</p>
                   </div>
-                  <button
-                    onClick={handlePay}
-                    disabled={!canPay}
-                    className={classNames(
-                      "px-6 py-3 bg-black text-white font-semibold",
-                      "hover:opacity-90",
-                      "rounded-sm",
-                      !canPay && "opacity-50 cursor-not-allowed"
+                )}
+
+                {canPay && !paymentStatus && (
+                  <>
+                    <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-sm">
+                      <p className="text-xs text-gray-600 mb-1">TOTAL A PAGAR</p>
+                      <p className="text-2xl font-bold">{formatARS(total)}</p>
+                    </div>
+
+                    {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
+                      <Payment
+                        initialization={initialization}
+                        customization={customization}
+                        onSubmit={onSubmitPayment}
+                        onError={onErrorPayment}
+                      />
+                    ) : (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ Falta configurar NEXT_PUBLIC_MP_PUBLIC_KEY en las variables de entorno
+                        </p>
+                      </div>
                     )}
-                  >
-                    PAGAR AHORA
-                  </button>
-                </div>
+                  </>
+                )}
+
                 {total <= 0 && (
                   <p className="text-xs text-gray-500">Tu carrito está vacío.</p>
                 )}
