@@ -160,9 +160,23 @@ export default function Checkout() {
 
   const onErrorPayment = (error) => {
     console.error('Payment error:', error);
+    
+    // Determinar mensaje de error más específico
+    let errorMessage = 'Error en el formulario de pago. Verifica los datos ingresados.';
+    
+    if (error?.message) {
+      errorMessage = error.message;
+    } else if (error?.cause) {
+      errorMessage = `Error: ${error.cause}`;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else if (!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) {
+      errorMessage = 'Error de configuración: Falta configurar las credenciales de Mercado Pago. Ver documentación.';
+    }
+    
     setPaymentStatus({
       type: 'error',
-      message: 'Error en el formulario de pago. Verifica los datos ingresados.',
+      message: errorMessage,
     });
     setProcessing(false);
   };
@@ -341,7 +355,27 @@ export default function Checkout() {
                       <p className="text-2xl font-bold">{formatARS(total)}</p>
                     </div>
 
-                    {typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MP_PUBLIC_KEY && mpInitialized.current ? (
+                    {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ? (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
+                        <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Configuración pendiente</p>
+                        <p className="text-xs text-yellow-800 mb-3">
+                          Para aceptar pagos, necesitas configurar tus credenciales de Mercado Pago.
+                        </p>
+                        <div className="text-xs text-yellow-900 space-y-1">
+                          <p>1. Crea archivo <code className="bg-yellow-100 px-1 py-0.5 rounded">.env.local</code></p>
+                          <p>2. Agrega: <code className="bg-yellow-100 px-1 py-0.5 rounded">NEXT_PUBLIC_MP_PUBLIC_KEY=TU_KEY</code></p>
+                          <p>3. Reinicia el servidor</p>
+                        </div>
+                        <a 
+                          href="https://www.mercadopago.com.ar/developers/panel/credentials" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-block text-xs font-semibold text-yellow-900 underline hover:text-yellow-700"
+                        >
+                          Obtener credenciales →
+                        </a>
+                      </div>
+                    ) : typeof window !== 'undefined' && mpInitialized.current ? (
                       <Payment
                         key={`payment-${email}-${total}`}
                         initialization={initialization}
@@ -350,11 +384,9 @@ export default function Checkout() {
                         onError={onErrorPayment}
                       />
                     ) : (
-                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-sm">
-                        <p className="text-sm text-yellow-800">
-                          {!process.env.NEXT_PUBLIC_MP_PUBLIC_KEY 
-                            ? '⚠️ Falta configurar NEXT_PUBLIC_MP_PUBLIC_KEY en las variables de entorno'
-                            : 'Inicializando sistema de pago...'}
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-sm">
+                        <p className="text-sm text-blue-800">
+                          ⏳ Inicializando sistema de pago...
                         </p>
                       </div>
                     )}
