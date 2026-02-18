@@ -2,7 +2,7 @@
 
 import { products, Size, Product, formatARS } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
-import OfferBanner from "@/components/OfferBanner";
+import HeroBanner from "@/components/HeroBanner";
 import { useMemo, useState } from "react";
 
 export default function ProductosPage() {
@@ -60,12 +60,14 @@ export default function ProductosPage() {
     <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6">
       {/* Banner Principal */}
       <div className="mb-6 sm:mb-8">
-        <OfferBanner
+        <HeroBanner
           title="MEGA SALE 50% OFF"
-          subtitle="Descuentos exclusivos en toda la tienda • Cuotas sin interés"
+          subtitle="Descuentos exclusivos en toda la tienda • Hasta 6 cuotas sin interés • Todas las categorías"
           ctaText="EXPLORAR OFERTAS"
           ctaLink="/productos"
-          variant="red"
+          backgroundImage="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=1920&q=80"
+          overlayIntensity="heavy"
+          height="medium"
         />
       </div>
 
@@ -289,13 +291,14 @@ export default function ProductosPage() {
           {/* Banner en medio de productos */}
           {filtered.length > 6 && (
             <div className="my-6 sm:my-8 md:my-10">
-              <OfferBanner
+              <HeroBanner
                 title="ENVÍO GRATIS"
-                subtitle="En compras mayores a $50.000 • Recibilo en 24/48hs"
+                subtitle="En compras mayores a $50.000 • Recibilo en 24/48hs • Seguimiento online"
                 ctaText="SEGUIR COMPRANDO"
                 ctaLink="/productos"
-                variant="navy"
-                small
+                backgroundImage="https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?w=1920&q=80"
+                overlayIntensity="heavy"
+                height="small"
               />
             </div>
           )}
