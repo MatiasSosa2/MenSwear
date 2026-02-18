@@ -13,7 +13,7 @@ export default function SuperioresPage() {
           subtitle="Camisas y buzos premium con 30% de descuento • Texturas de calidad superior"
           ctaText="DESCUBRIR"
           ctaLink="/categorias/superiores"
-          backgroundImage="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80"
+          backgroundImage="https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=1600&q=80"
           overlayIntensity="heavy"
           height="small"
         />
