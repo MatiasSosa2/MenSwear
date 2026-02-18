@@ -1,6 +1,6 @@
 import { products } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
-import OfferBanner from "@/components/OfferBanner";
+import HeroBanner from "@/components/HeroBanner";
 
 export default function SuperioresPage() {
   const list = products.filter((p) => p.category === "superiores");
@@ -8,13 +8,14 @@ export default function SuperioresPage() {
     <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
       {/* Banner de Oferta */}
       <div className="mb-6 sm:mb-8">
-        <OfferBanner
+        <HeroBanner
           title="NUEVA COLECCIÓN"
-          subtitle="Camisas y buzos premium con 30% de descuento"
+          subtitle="Camisas y buzos premium con 30% de descuento • Texturas de calidad superior"
           ctaText="DESCUBRIR"
           ctaLink="/categorias/superiores"
-          variant="navy"
-          small
+          backgroundImage="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80"
+          overlayIntensity="heavy"
+          height="small"
         />
       </div>
 
@@ -31,13 +32,14 @@ export default function SuperioresPage() {
       {/* Banner intermedio */}
       {list.length > 6 && (
         <div className="my-6 sm:my-8">
-          <OfferBanner
+          <HeroBanner
             title="NUEVOS ARRIVALS"
             subtitle="Las últimas tendencias en moda masculina ya están aquí"
             ctaText="DESCUBRIR"
             ctaLink="/categorias/superiores"
-            variant="black"
-            small
+            backgroundImage="https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=1600&q=80"
+            overlayIntensity="medium"
+            height="small"
           />
         </div>
       )}

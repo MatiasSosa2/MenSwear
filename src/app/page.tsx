@@ -3,33 +3,28 @@ import { products } from "@/data/products";
 import { getCachedImageForTitle } from "@/lib/images";
 import Carousel from "@/components/Carousel";
 import ProductSlide from "@/components/ProductSlide";
-import OfferBanner from "@/components/OfferBanner";
 import HeroBanner from "@/components/HeroBanner";
 import SectionBanner from "@/components/SectionBanner";
 
 export default function Home() {
   return (
     <div>
-      {/* Hero Banner con imagen premium de Unsplash */}
-      <HeroBanner
-        title="Nueva Colección Premium"
-        subtitle="Diseño minimalista y calidad premium en cada fibra. Descubrí prendas que redefinen tu estilo."
-        ctaText="EXPLORAR COLECCIÓN"
-        ctaLink="/productos"
-        backgroundImage="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80"
-        overlayIntensity="medium"
-        height="hero"
-      />
+      {/* Hero: imagen original */}
+      <section className="relative h-[60vh] sm:h-[75vh] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden rounded-b-2xl sm:rounded-b-3xl md:rounded-b-[3rem]">
+        <img src="/hero.jpg" alt="Hero fashion" className="absolute inset-0 h-full w-full object-cover" />
+      </section>
 
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6">
         {/* Banner Principal */}
         <section className="my-6 sm:my-8 md:my-10">
-          <OfferBanner
+          <HeroBanner
             title="MEGA SALE 50% OFF"
-            subtitle="Descuentos exclusivos en toda la tienda • Cuotas sin interés"
+            subtitle="Descuentos exclusivos en toda la tienda • Hasta 6 cuotas sin interés • Stock limitado"
             ctaText="EXPLORAR OFERTAS"
             ctaLink="/productos"
-            variant="navy"
+            backgroundImage="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1920&q=80"
+            overlayIntensity="heavy"
+            height="medium"
           />
         </section>
 
@@ -77,13 +72,14 @@ export default function Home() {
 
         {/* Banner Secundario */}
         <section className="my-12 sm:my-16 md:my-20">
-          <OfferBanner
+          <HeroBanner
             title="ENVÍO GRATIS EN 24/48HS"
             subtitle="En compras mayores a $50.000 • Recibí tu pedido donde estés"
             ctaText="COMPRAR AHORA"
             ctaLink="/productos"
-            variant="red"
-            small
+            backgroundImage="https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?w=1920&q=80"
+            overlayIntensity="heavy"
+            height="small"
           />
         </section>
 
@@ -108,19 +104,6 @@ export default function Home() {
               textAlign="right"
             />
           </div>
-        </section>
-
-        {/* Banner Mega Sale Premium */}
-        <section className="my-16 sm:my-20 md:my-24">
-          <HeroBanner
-            title="Mega Sale 50% OFF"
-            subtitle="Descuentos exclusivos en toda la tienda • Hasta 6 cuotas sin interés • Stock limitado"
-            ctaText="VER OFERTAS"
-            ctaLink="/productos"
-            backgroundImage="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1920&q=80"
-            overlayIntensity="heavy"
-            height="medium"
-          />
         </section>
 
         {/* Promos y Descuentos */}

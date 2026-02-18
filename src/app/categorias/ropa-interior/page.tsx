@@ -1,6 +1,6 @@
 import { products } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
-import OfferBanner from "@/components/OfferBanner";
+import HeroBanner from "@/components/HeroBanner";
 
 export default function RopaInteriorPage() {
   const list = products.filter((p) => p.category === "ropa-interior");
@@ -8,13 +8,14 @@ export default function RopaInteriorPage() {
     <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
       {/* Banner de Oferta */}
       <div className="mb-6 sm:mb-8">
-        <OfferBanner
+        <HeroBanner
           title="2x1 EN BÁSICOS"
           subtitle="Llevá el doble por el mismo precio • Oferta válida en toda la sección"
           ctaText="APROVECHAR OFERTA"
           ctaLink="/categorias/ropa-interior"
-          variant="red"
-          small
+          backgroundImage="https://images.unsplash.com/photo-1578632292335-df3abbb0d586?w=1600&q=80"
+          overlayIntensity="heavy"
+          height="small"
         />
       </div>
 
@@ -31,13 +32,14 @@ export default function RopaInteriorPage() {
       {/* Banner intermedio */}
       {list.length > 6 && (
         <div className="my-6 sm:my-8">
-          <OfferBanner
+          <HeroBanner
             title="PACK X6 ESPECIAL"
             subtitle="Llevá 6 unidades y ahorrá hasta 50% • Calidad premium"
             ctaText="ARMAR MI PACK"
             ctaLink="/categorias/ropa-interior"
-            variant="navy"
-            small
+            backgroundImage="https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=1920&q=80"
+            overlayIntensity="medium"
+            height="small"
           />
         </div>
       )}

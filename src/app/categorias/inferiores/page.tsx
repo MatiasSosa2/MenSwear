@@ -1,6 +1,6 @@
 import { products } from "@/data/products";
 import ProductCard from "@/components/ProductCard";
-import OfferBanner from "@/components/OfferBanner";
+import HeroBanner from "@/components/HeroBanner";
 
 export default function InferioresPage() {
   const list = products.filter((p) => p.category === "inferiores");
@@ -8,13 +8,14 @@ export default function InferioresPage() {
     <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
       {/* Banner de Oferta */}
       <div className="mb-6 sm:mb-8">
-        <OfferBanner
+        <HeroBanner
           title="INFERIORES 40% OFF"
           subtitle="Jeans, pantalones y joggers en oferta por tiempo limitado"
           ctaText="COMPRAR AHORA"
           ctaLink="/categorias/inferiores"
-          variant="black"
-          small
+          backgroundImage="https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=1920&q=80"
+          overlayIntensity="heavy"
+          height="small"
         />
       </div>
 
@@ -31,13 +32,14 @@ export default function InferioresPage() {
       {/* Banner intermedio */}
       {list.length > 6 && (
         <div className="my-6 sm:my-8">
-          <OfferBanner
+          <HeroBanner
             title="3 CUOTAS SIN INTERÉS"
             subtitle="En todos los medios de pago • Para compras superiores a $30.000"
             ctaText="VER MÁS"
             ctaLink="/categorias/inferiores"
-            variant="red"
-            small
+            backgroundImage="https://images.unsplash.com/photo-1542272604-787c3835535d?w=1920&q=80"
+            overlayIntensity="heavy"
+            height="small"
           />
         </div>
       )}
