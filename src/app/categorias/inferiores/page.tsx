@@ -13,7 +13,7 @@ export default function InferioresPage() {
           subtitle="Jeans, pantalones y joggers en oferta por tiempo limitado"
           ctaText="COMPRAR AHORA"
           ctaLink="/categorias/inferiores"
-          backgroundImage="https://images.unsplash.com/photo-1539533018447-63fcce2678e3?w=1920&q=80"
+          backgroundImage="https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=1920&q=80"
           overlayIntensity="heavy"
           height="small"
         />

@@ -22,7 +22,7 @@ export default function Home() {
             subtitle="Descuentos exclusivos en toda la tienda • Hasta 6 cuotas sin interés • Stock limitado"
             ctaText="EXPLORAR OFERTAS"
             ctaLink="/productos"
-            backgroundImage="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1920&q=80"
+            backgroundImage="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=1920&q=80"
             overlayIntensity="heavy"
             height="medium"
           />
