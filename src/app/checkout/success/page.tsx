@@ -1,11 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-// Deshabilitar pre-rendering para esta página
-export const dynamic = 'force-dynamic';
-
-export default function CheckoutSuccess() {
+function SuccessContent() {
   const [orderData, setOrderData] = useState<any>(null);
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("payment_id");
@@ -92,5 +89,17 @@ export default function CheckoutSuccess() {
         </a>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">Cargando...</div>
+      </div>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }

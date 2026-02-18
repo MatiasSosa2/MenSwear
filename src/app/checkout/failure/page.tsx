@@ -1,10 +1,8 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-// Deshabilitar pre-rendering para esta página
-export const dynamic = 'force-dynamic';
-
-export default function CheckoutFailure() {
+function FailureContent() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("payment_id");
   const status = searchParams.get("status");
@@ -77,5 +75,17 @@ export default function CheckoutFailure() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutFailure() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">Cargando...</div>
+      </div>
+    }>
+      <FailureContent />
+    </Suspense>
   );
 }
