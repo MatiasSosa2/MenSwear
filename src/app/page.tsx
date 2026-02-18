@@ -4,14 +4,22 @@ import { getCachedImageForTitle } from "@/lib/images";
 import Carousel from "@/components/Carousel";
 import ProductSlide from "@/components/ProductSlide";
 import OfferBanner from "@/components/OfferBanner";
+import HeroBanner from "@/components/HeroBanner";
+import SectionBanner from "@/components/SectionBanner";
 
 export default function Home() {
   return (
     <div>
-      {/* Hero: usar la imagen adjunta en public/hero.jpg */}
-      <section className="relative h-[60vh] sm:h-[75vh] md:h-[85vh] lg:h-[90vh] w-full overflow-hidden rounded-b-2xl sm:rounded-b-3xl md:rounded-b-[3rem]">
-        <img src="/hero.jpg" alt="Hero fashion" className="absolute inset-0 h-full w-full object-cover" />
-      </section>
+      {/* Hero Banner con imagen premium de Unsplash */}
+      <HeroBanner
+        title="Nueva Colección Premium"
+        subtitle="Diseño minimalista y calidad premium en cada fibra. Descubrí prendas que redefinen tu estilo."
+        ctaText="EXPLORAR COLECCIÓN"
+        ctaLink="/productos"
+        backgroundImage="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80"
+        overlayIntensity="medium"
+        height="hero"
+      />
 
       <div className="mx-auto max-w-7xl px-3 sm:px-4 md:px-6">
         {/* Banner Principal */}
@@ -76,6 +84,42 @@ export default function Home() {
             ctaLink="/productos"
             variant="red"
             small
+          />
+        </section>
+
+        {/* Banners de Categoría con Imágenes */}
+        <section className="my-16 sm:my-20 md:my-24">
+          <h2 className="section-title text-muted text-xs sm:text-sm mb-4 sm:mb-6">Destacados por Categoría</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <SectionBanner
+              title="Superiores Premium"
+              description="Camisas Oxford, sweaters de cashmere y lino mercenizado. Texturas que hablan de calidad."
+              ctaText="VER SUPERIORES"
+              ctaLink="/categorias/superiores"
+              backgroundImage="https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=1600&q=80"
+              textAlign="left"
+            />
+            <SectionBanner
+              title="Inferiores Urbanos"
+              description="Selvedge denim, chinos sastrero y joggers de gabardina. Para cada ocasión."
+              ctaText="VER INFERIORES"
+              ctaLink="/categorias/inferiores"
+              backgroundImage="https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=1920&q=80"
+              textAlign="right"
+            />
+          </div>
+        </section>
+
+        {/* Banner Mega Sale Premium */}
+        <section className="my-16 sm:my-20 md:my-24">
+          <HeroBanner
+            title="Mega Sale 50% OFF"
+            subtitle="Descuentos exclusivos en toda la tienda • Hasta 6 cuotas sin interés • Stock limitado"
+            ctaText="VER OFERTAS"
+            ctaLink="/productos"
+            backgroundImage="https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1920&q=80"
+            overlayIntensity="heavy"
+            height="medium"
           />
         </section>
 
