@@ -2,6 +2,8 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 function FailureContent() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("payment_id");
