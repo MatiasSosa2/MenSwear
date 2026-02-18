@@ -1,6 +1,9 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 
+// Deshabilitar pre-rendering para esta página
+export const dynamic = 'force-dynamic';
+
 export default function CheckoutFailure() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("payment_id");

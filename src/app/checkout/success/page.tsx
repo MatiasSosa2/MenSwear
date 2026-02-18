@@ -2,6 +2,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+// Deshabilitar pre-rendering para esta página
+export const dynamic = 'force-dynamic';
+
 export default function CheckoutSuccess() {
   const [orderData, setOrderData] = useState<any>(null);
   const searchParams = useSearchParams();
