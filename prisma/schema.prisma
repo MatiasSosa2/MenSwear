@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── PEDIDOS ────────────────────────────────────────────────────────────────
+
+model Order {
+  id               String      @id @default(cuid())
+  // Referencia de MercadoPago
+  mercadoPagoId    String?     @unique @map("mercado_pago_id")
+  externalRef      String      @unique @map("external_ref")
+  // Datos del cliente
+  customerName     String      @map("customer_name")
+  customerLastName String      @map("customer_last_name")
+  customerDni      String      @map("customer_dni")
+  customerEmail    String      @map("customer_email")
+  customerPhone    String      @map("customer_phone")
+  // Dirección de entrega
+  address          String
+  city             String
+  province         String
+  zip              String
+  notes            String?     @db.Text
+  // Totales
+  subtotal         Float
+  shippingCost     Float       @map("shipping_cost")
+  total            Float
+  shippingService  String?     @map("shipping_service")
+  // Estado del pedido
+  status           OrderStatus @default(PENDING)
+  // Timestamps
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  items            OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String  @map("order_id")
+  productSlug  String  @map("product_slug")
+  productTitle String  @map("product_title")
+  size         String?
+  color        String?
+  colorHex     String? @map("color_hex")
+  quantity     Int
+  unitPrice    Float   @map("unit_price")
+  totalPrice   Float   @map("total_price")
+
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  PENDING    // Pendiente (creado, esperando pago)
+  APPROVED   // Aprobado (MercadoPago confirmó pago)
+  REJECTED   // Rechazado
+  CANCELLED  // Cancelado
+  SHIPPED    // Despachado
+  DELIVERED  // Entregado
+}
+
+// ─── STOCK DE PRODUCTOS ──────────────────────────────────────────────────────
+
+model ProductStock {
+  slug      String   @id
+  stock     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("product_stock")
+}
+
+// ─── ADMIN ──────────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String    // bcrypt hash
+  name      String
+  role      AdminRole @default(VIEWER)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+enum AdminRole {
+  OWNER   // Dueño - acceso total
+  VIEWER  // Solo lectura
+}

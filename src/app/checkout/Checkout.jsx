@@ -20,6 +20,8 @@ export default function Checkout() {
 
   // Section 1: Datos
   const [name, setName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dni, setDni] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -93,7 +95,8 @@ export default function Checkout() {
   const total = subtotal + shippingCost;
 
   const isValidEmail = (v) => /.+@.+\..+/.test(v.trim());
-  const datosValidos = name.trim().length >= 2 && isValidEmail(email) && phone.trim().length >= 7;
+  const isValidDni = (v) => /^\d{7,8}$/.test(v.trim());
+  const datosValidos = name.trim().length >= 2 && lastName.trim().length >= 2 && isValidDni(dni) && isValidEmail(email) && phone.trim().length >= 7;
   const entregaValida = address.trim().length >= 3 && city.trim().length >= 2 && province.trim().length >= 2 && zip.trim().length >= 3;
 
   const canPay = datosConfirmados && entregaConfirmada && compraConfirmada && total > 0;
@@ -136,11 +139,53 @@ export default function Checkout() {
         });
       }
 
-      // Crear preferencia de pago en Mercado Pago
+      // ORDEN SIMPLIFICADA (Sin Base de Datos)
+      // Usamos un ID temporal basado en la fecha para referencia en Mercado Pago
+      const tempOrderId = `ORDER-${Date.now()}`;
+
+      // 1. Crear la orden en la base de datos (estado PENDING)
+      try {
+        await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalRef: tempOrderId,
+            customerName: name.trim(),
+            customerLastName: lastName.trim(),
+            customerDni: dni.trim(),
+            customerEmail: email.trim(),
+            customerPhone: phone.trim(),
+            address: address.trim(),
+            city: city.trim(),
+            province: province.trim(),
+            zip: zip.trim(),
+            notes: notes.trim() || undefined,
+            subtotal,
+            shippingCost,
+            total,
+            shippingService: shippingDetails?.service || undefined,
+            items: items.map(i => ({
+              id: i.id,
+              title: i.title,
+              size: i.size || undefined,
+              color: i.color || undefined,
+              colorHex: i.colorHex || undefined,
+              qty: i.qty,
+              price: i.price,
+            })),
+          }),
+        });
+      } catch (dbError) {
+        console.error('Error guardando pedido en DB:', dbError);
+        // Continuamos de todas formas para no bloquear el pago
+      }
+
+      // 2. Crear preferencia de pago en Mercado Pago
       const preferenceData = {
-        items: mpItems,
+        items: mpItems, // Items formateados para MP
         payer: {
           name: name,
+          surname: lastName,
           email: email,
           phone: {
             area_code: phone.substring(0, 3) || '11',
@@ -154,17 +199,19 @@ export default function Checkout() {
           }
         },
         metadata: {
-          // Datos adicionales para procesar después del pago
+          // Datos completos de la orden para que queden registrados en MP
           shipping_cost: shippingCost,
           shipping_service: shippingDetails?.service || 'N/A',
-          shipping_days: shippingDetails?.deliveryDays || 'N/A',
-          buyer_name: name,
+          buyer_name: `${name} ${lastName}`,
+          buyer_dni: dni,
           buyer_phone: phone,
           shipping_address: address,
           shipping_city: city,
           shipping_province: province,
           shipping_zip: zip,
-          shipping_notes: notes
+          shipping_notes: notes,
+          // Guardamos un JSON string con los items originales por si se necesita recuperar
+          original_items: JSON.stringify(items.map(i => ({id: i.id, q: i.quantity, t: i.title})))
         },
         back_urls: {
           success: `${window.location.origin}/checkout/success`,
@@ -172,9 +219,9 @@ export default function Checkout() {
           pending: `${window.location.origin}/checkout/pending`
         },
         auto_return: 'approved',
-        notification_url: `${window.location.origin}/api/mercadopago/notifications`,
+        notification_url: `${window.location.origin}/api/mercadopago/notification`,
         statement_descriptor: 'E-COMMERCE',
-        external_reference: `ORDER-${Date.now()}`
+        external_reference: tempOrderId 
       };
 
       const response = await fetch('/api/create_preference', {
@@ -270,11 +317,15 @@ export default function Checkout() {
           {!datosConfirmados ? (
             <div className="border border-gray-200 rounded-sm p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="space-y-3 sm:space-y-4">
-                <Input label="Nombre y apellido" value={name} onChange={setName} placeholder="EJ: MATÍAS CORTEZ" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label="Nombre" value={name} onChange={setName} placeholder="EJ: MATÍAS" />
+                  <Input label="Apellido" value={lastName} onChange={setLastName} placeholder="EJ: CORTEZ" />
+                </div>
+                <Input label="DNI (sin puntos)" value={dni} onChange={setDni} placeholder="EJ: 38000000" />
                 <Input label="Email" type="email" value={email} onChange={(v) => { setEmail(v); try { localStorage.setItem("checkout_email", v); } catch {} }} placeholder="CLIENTE@CORREO.COM" />
                 <Input label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 11 5555 5555" />
                 {!datosValidos && (
-                  <p className="text-xs sm:text-sm text-red-600">Completa nombre, email y teléfono para continuar.</p>
+                  <p className="text-xs sm:text-sm text-red-600">Completa nombre, apellido, DNI (7-8 dígitos), email y teléfono para continuar.</p>
                 )}
                 <button
                   onClick={() => datosValidos && setDatosConfirmados(true)}
@@ -311,7 +362,8 @@ export default function Checkout() {
                 </button>
               </div>
               <div className="space-y-2 text-sm text-green-900">
-                <p><span className="font-semibold">Nombre:</span> {name}</p>
+                <p><span className="font-semibold">Nombre:</span> {name} {lastName}</p>
+                <p><span className="font-semibold">DNI:</span> {dni}</p>
                 <p><span className="font-semibold">Email:</span> {email}</p>
                 <p><span className="font-semibold">Teléfono:</span> {phone}</p>
               </div>

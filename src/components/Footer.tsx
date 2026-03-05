@@ -29,7 +29,7 @@ export default function Footer() {
                 <Link href="/categorias/ropa-interior" className="hover:text-white transition-colors">Ropa interior</Link>
               </li>
               <li>
-                <Link href="/summer" className="hover:text-white transition-colors">Summer</Link>
+                <Link href="/categorias/summer" className="hover:text-white transition-colors">Summer</Link>
               </li>
             </ul>
           </div>

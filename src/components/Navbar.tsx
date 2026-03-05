@@ -17,7 +17,7 @@ export default function Navbar() {
       "/categorias/inferiores",
       "/categorias/superiores",
       "/categorias/ropa-interior",
-      "/summer",
+      "/categorias/summer",
     ];
     try {
       routes.forEach((r) => router.prefetch(r));
@@ -55,7 +55,7 @@ export default function Navbar() {
           <Link href="/categorias/inferiores" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/inferiores")} prefetch>Inferiores</Link>
           <Link href="/categorias/superiores" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/superiores")} prefetch>Superiores</Link>
           <Link href="/categorias/ropa-interior" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/ropa-interior")} prefetch>Ropa Interior</Link>
-          <Link href="/summer" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/summer")} prefetch>Summer</Link>
+          <Link href="/categorias/summer" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/summer")} prefetch>Summer</Link>
         </div>
 
         {/* Menú móvil */}
@@ -77,7 +77,7 @@ export default function Navbar() {
               <Link href="/categorias/ropa-interior" onClick={withFallback("/categorias/ropa-interior")} prefetch className="block w-full px-3 py-2.5 sm:py-3">Ropa Interior</Link>
             </DropdownMenu.Item>
             <DropdownMenu.Item className="rounded-sm text-xs sm:text-sm hover:bg-foreground/5 focus:bg-foreground/5 outline-none">
-              <Link href="/summer" onClick={withFallback("/summer")} prefetch className="block w-full px-3 py-2.5 sm:py-3">Summer</Link>
+              <Link href="/categorias/summer" onClick={withFallback("/categorias/summer")} prefetch className="block w-full px-3 py-2.5 sm:py-3">Summer</Link>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Root>
