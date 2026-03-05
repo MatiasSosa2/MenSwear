@@ -39,8 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# markdown docs (solo locales)
+# markdown docs (solo locales, excepto README)
 *.md
+!README.md
 next-env.d.ts
 
 /src/generated/prisma
