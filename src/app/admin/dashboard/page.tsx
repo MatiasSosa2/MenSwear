@@ -84,12 +84,12 @@ const fmt = (n: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-  PENDING:   { label: "Pendiente",  color: "bg-yellow-100 text-yellow-800" },
-  APPROVED:  { label: "Aprobado",   color: "bg-green-100 text-green-800" },
-  REJECTED:  { label: "Rechazado",  color: "bg-red-100 text-red-800" },
-  CANCELLED: { label: "Cancelado",  color: "bg-gray-100 text-gray-800" },
-  SHIPPED:   { label: "Despachado", color: "bg-blue-100 text-blue-800" },
-  DELIVERED: { label: "Entregado",  color: "bg-purple-100 text-purple-800" },
+  PENDING:   { label: "Pendiente",  color: "bg-gray-100 text-gray-600 border border-gray-300" },
+  APPROVED:  { label: "Aprobado",   color: "bg-black text-white" },
+  REJECTED:  { label: "Rechazado",  color: "bg-gray-300 text-gray-700" },
+  CANCELLED: { label: "Cancelado",  color: "bg-gray-200 text-gray-500" },
+  SHIPPED:   { label: "Despachado", color: "bg-gray-700 text-white" },
+  DELIVERED: { label: "Entregado",  color: "bg-gray-900 text-gray-100" },
 };
 
 export default async function DashboardPage() {
@@ -107,23 +107,22 @@ export default async function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Ingresos totales" value={fmt(data.revenue.total)} sub="pedidos aprobados" icon="💰" />
+        <KpiCard title="Ingresos totales" value={fmt(data.revenue.total)} sub="pedidos aprobados" />
         <KpiCard
           title="Este mes"
           value={fmt(data.revenue.thisMonth)}
           sub={`${data.revenue.thisMonthCount} ventas${monthGrowth ? ` · ${monthGrowth}%` : ""}`}
-          icon="📈"
         />
-        <KpiCard title="Pedidos totales" value={String(data.orders.total)} sub={`${data.orders.pending} pendientes`} icon="🛍️" />
-        <KpiCard title="Despachados" value={String(data.orders.shipped)} sub="para entregar" icon="🚚" />
+        <KpiCard title="Pedidos totales" value={String(data.orders.total)} sub={`${data.orders.pending} pendientes`} />
+        <KpiCard title="Despachados" value={String(data.orders.shipped)} sub="para entregar" />
       </div>
 
       {/* Estados de pedidos */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Aprobados", count: data.orders.approved, color: "bg-green-50 border-green-200 text-green-700" },
-          { label: "Pendientes", count: data.orders.pending, color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
-          { label: "Rechazados", count: data.orders.total - data.orders.approved - data.orders.pending - data.orders.shipped, color: "bg-red-50 border-red-200 text-red-700" },
+          { label: "Aprobados", count: data.orders.approved, color: "bg-black border-black text-white" },
+          { label: "Pendientes", count: data.orders.pending, color: "bg-white border-gray-300 text-gray-700" },
+          { label: "Rechazados", count: data.orders.total - data.orders.approved - data.orders.pending - data.orders.shipped, color: "bg-gray-200 border-gray-300 text-gray-600" },
         ].map((s) => (
           <div key={s.label} className={`border rounded-xl p-4 ${s.color}`}>
             <p className="text-2xl font-bold">{s.count}</p>
@@ -192,13 +191,10 @@ export default async function DashboardPage() {
   );
 }
 
-function KpiCard({ title, value, sub, icon }: { title: string; value: string; sub: string; icon: string }) {
+function KpiCard({ title, value, sub }: { title: string; value: string; sub: string }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-xs text-gray-500 font-medium">{title}</p>
-        <span className="text-xl">{icon}</span>
-      </div>
+      <p className="text-xs text-gray-500 font-medium mb-2">{title}</p>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-400 mt-1">{sub}</p>
     </div>

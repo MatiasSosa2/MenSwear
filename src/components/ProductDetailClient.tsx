@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Product, Size, formatARS } from "@/data/products";
 import { addToCart, CartItem } from "@/lib/cart";
 
@@ -10,9 +10,27 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const [qty, setQty] = useState<number>(1);
   const [adding, setAdding] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [sizeStocks, setSizeStocks] = useState<Record<string, number> | null>(null);
 
   const color = product.colors[colorIndex];
-  const stockMap: Record<Size, number> = { S: 5, M: 2, L: 8, XL: 3, XXL: 1 } as const;
+
+  // Cargar stock real desde la DB
+  useEffect(() => {
+    fetch(`/api/stock/${product.slug}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.sizeStocks) setSizeStocks(data.sizeStocks);
+      })
+      .catch(() => {}); // si falla, el stock queda null (sin restricción)
+  }, [product.slug]);
+
+  const getStock = (s: string): number | null => {
+    if (!sizeStocks) return null; // sin datos = sin restricción
+    return sizeStocks[s] ?? 0;
+  };
+
+  const selectedStock = size ? getStock(size) : null;
+  const isOutOfStock = selectedStock !== null && selectedStock === 0;
 
   return (
     <div className="mt-3 sm:mt-4 space-y-4 sm:space-y-5">
@@ -22,20 +40,37 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           <button className="text-xs sm:text-sm underline-offset-2 hover:underline" onClick={() => setShowSizeGuide(true)}>Find my Size</button>
         </div>
         <div className="mt-2 grid grid-cols-5 gap-1.5 sm:gap-2">
-          {product.sizes.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSize(s)}
-              className={`rounded-sm border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all ${
-                size === s ? "border-foreground bg-foreground text-background scale-105" : "border-foreground/30 bg-background hover:border-foreground/50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
+          {product.sizes.map((s) => {
+            const stock = getStock(s);
+            const outOfStock = stock !== null && stock === 0;
+            return (
+              <button
+                key={s}
+                onClick={() => { if (!outOfStock) { setSize(s); setQty(1); } }}
+                disabled={outOfStock}
+                title={outOfStock ? "Sin stock" : undefined}
+                className={`relative rounded-sm border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-all ${
+                  outOfStock
+                    ? "border-foreground/15 text-foreground/30 cursor-not-allowed line-through"
+                    : size === s
+                    ? "border-foreground bg-foreground text-background scale-105"
+                    : "border-foreground/30 bg-background hover:border-foreground/50"
+                }`}
+              >
+                {s}
+              </button>
+            );
+          })}
         </div>
-        {size && stockMap[size] <= 3 && (
-          <p className="mt-2 text-[10px] sm:text-[11px] text-orange-600 font-medium">Últimas {stockMap[size]} unidades en este talle</p>
+        {size && selectedStock !== null && selectedStock > 0 && selectedStock <= 3 && (
+          <p className="mt-2 text-[10px] sm:text-[11px] text-foreground/60 font-medium">
+            Últimas {selectedStock} unidades en talle {size}
+          </p>
+        )}
+        {isOutOfStock && size && (
+          <p className="mt-2 text-[10px] sm:text-[11px] text-foreground/50 font-medium">
+            Sin stock en talle {size}
+          </p>
         )}
       </div>
 
@@ -63,15 +98,20 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         <p className="text-xs sm:text-sm font-medium">Cantidad</p>
         <div className="mt-2 inline-flex items-center gap-2 sm:gap-3">
           <button
-            className="rounded-sm border border-foreground/30 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium hover:bg-foreground/5 active:scale-95 transition-all"
+            className="rounded-sm border border-foreground/30 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium hover:bg-foreground/5 active:scale-95 transition-all disabled:opacity-30"
             onClick={() => setQty((q) => Math.max(1, q - 1))}
+            disabled={!size || isOutOfStock}
           >
             -
           </button>
           <span className="min-w-[32px] sm:min-w-[40px] text-center text-sm sm:text-base font-semibold">{qty}</span>
           <button
-            className="rounded-sm border border-foreground/30 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium hover:bg-foreground/5 active:scale-95 transition-all"
-            onClick={() => setQty((q) => q + 1)}
+            className="rounded-sm border border-foreground/30 px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base font-medium hover:bg-foreground/5 active:scale-95 transition-all disabled:opacity-30"
+            onClick={() => {
+              const max = selectedStock ?? 999;
+              setQty((q) => Math.min(q + 1, max));
+            }}
+            disabled={!size || isOutOfStock || (selectedStock !== null && qty >= selectedStock)}
           >
             +
           </button>
@@ -80,11 +120,10 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
       <button
         className="w-full rounded-md sm:rounded-none bg-foreground px-4 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold text-background transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-        disabled={!size || adding}
+        disabled={!size || adding || isOutOfStock}
         onClick={() => {
           setAdding(true);
           setTimeout(() => {
-            // Añadir al carrito en localStorage
             if (size) {
               const id = `${product.slug}-${size}-${product.colors[colorIndex]?.name || "default"}`;
               const item: CartItem = {
@@ -99,14 +138,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               };
               addToCart(item);
             }
-            // Abrir carrito lateral disparando el trigger existente si está en el DOM
             const btn = document.querySelector('button[aria-label="Abrir carrito"]') as HTMLButtonElement | null;
             btn?.click();
             setAdding(false);
           }, 600);
         }}
       >
-        {adding ? "Añadiendo…" : "AÑADIR A LA BOLSA"} — {formatARS(product.price * qty)}
+        {adding
+          ? "Añadiendo…"
+          : isOutOfStock
+          ? "SIN STOCK"
+          : "AÑADIR A LA BOLSA"}{" "}
+        {!isOutOfStock && `— ${formatARS(product.price * qty)}`}
       </button>
 
       {showSizeGuide && (

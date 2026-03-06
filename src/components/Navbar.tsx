@@ -56,6 +56,7 @@ export default function Navbar() {
           <Link href="/categorias/superiores" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/superiores")} prefetch>Superiores</Link>
           <Link href="/categorias/ropa-interior" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/ropa-interior")} prefetch>Ropa Interior</Link>
           <Link href="/categorias/summer" className="text-xs lg:text-sm font-medium text-foreground hover:opacity-70 transition-opacity" onClick={withFallback("/categorias/summer")} prefetch>Summer</Link>
+          <Link href="/admin/login" className="text-xs lg:text-sm font-medium px-3 py-1.5 rounded-md bg-foreground text-background hover:opacity-80 transition-opacity">Admin</Link>
         </div>
 
         {/* Menú móvil */}
@@ -78,6 +79,10 @@ export default function Navbar() {
             </DropdownMenu.Item>
             <DropdownMenu.Item className="rounded-sm text-xs sm:text-sm hover:bg-foreground/5 focus:bg-foreground/5 outline-none">
               <Link href="/categorias/summer" onClick={withFallback("/categorias/summer")} prefetch className="block w-full px-3 py-2.5 sm:py-3">Summer</Link>
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator className="my-1 h-px bg-foreground/10" />
+            <DropdownMenu.Item className="rounded-sm text-xs sm:text-sm outline-none">
+              <Link href="/admin/login" className="block w-full px-3 py-2.5 sm:py-3 font-semibold">⚙️ Admin</Link>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Root>

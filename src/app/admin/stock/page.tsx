@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 
 type ProductStock = {
@@ -7,7 +7,8 @@ type ProductStock = {
   category: string;
   price: number;
   sizes: string[];
-  stock: number;
+  sizeStocks: Record<string, number>;
+  total: number;
 };
 
 const categoryLabels: Record<string, string> = {
@@ -23,11 +24,12 @@ const fmt = (n: number) =>
 export default function StockPage() {
   const [products, setProducts] = useState<ProductStock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [edited, setEdited] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState<string | null>(null); // "slug-size"
+  const [saved, setSaved] = useState<string | null>(null);
+  // edits: { "slug|size": newQuantity }
+  const [edits, setEdits] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("ALL");
-  const [saved, setSaved] = useState<string | null>(null);
 
   const fetchStock = useCallback(async () => {
     setLoading(true);
@@ -42,35 +44,37 @@ export default function StockPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStock();
-  }, [fetchStock]);
+  useEffect(() => { fetchStock(); }, [fetchStock]);
 
-  const handleEdit = (slug: string, value: number) => {
-    setEdited((prev) => ({ ...prev, [slug]: value }));
+  const key = (slug: string, size: string) => `${slug}|${size}`;
+
+  const handleEdit = (slug: string, size: string, value: number) => {
+    setEdits((prev) => ({ ...prev, [key(slug, size)]: value }));
   };
 
-  const handleSave = async (slug: string) => {
-    const stock = edited[slug];
-    if (stock === undefined) return;
+  const handleSave = async (slug: string, size: string) => {
+    const k = key(slug, size);
+    const quantity = edits[k];
+    if (quantity === undefined) return;
 
-    setSaving(slug);
+    setSaving(k);
     try {
       const res = await fetch("/api/admin/stock", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, stock }),
+        body: JSON.stringify({ slug, size, quantity }),
       });
       if (res.ok) {
+        const updated = await res.json();
         setProducts((prev) =>
-          prev.map((p) => (p.slug === slug ? { ...p, stock } : p))
+          prev.map((p) =>
+            p.slug === slug
+              ? { ...p, sizeStocks: updated.sizeStocks, total: updated.total }
+              : p
+          )
         );
-        setEdited((prev) => {
-          const next = { ...prev };
-          delete next[slug];
-          return next;
-        });
-        setSaved(slug);
+        setEdits((prev) => { const n = { ...prev }; delete n[k]; return n; });
+        setSaved(k);
         setTimeout(() => setSaved(null), 2000);
       }
     } finally {
@@ -79,24 +83,26 @@ export default function StockPage() {
   };
 
   const filtered = products.filter((p) => {
-    const matchSearch =
-      !search || p.title.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || p.title.toLowerCase().includes(search.toLowerCase());
     const matchCat = category === "ALL" || p.category === category;
     return matchSearch && matchCat;
   });
 
-  const totalLowStock = products.filter((p) => {
-    const s = edited[p.slug] ?? p.stock;
-    return s <= 3;
-  }).length;
+  const totalLowStock = products.reduce((acc, p) => {
+    const hasLow = p.sizes.some((s) => {
+      const qty = edits[key(p.slug, s)] ?? p.sizeStocks[s] ?? 0;
+      return qty <= 3;
+    });
+    return acc + (hasLow ? 1 : 0);
+  }, 0);
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Gestión de Stock</h1>
         {totalLowStock > 0 && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm text-orange-700 font-medium">
-            ⚠️ {totalLowStock} producto{totalLowStock !== 1 ? "s" : ""} con stock bajo (≤3)
+          <div className="bg-gray-100 border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-700 font-medium">
+            ! {totalLowStock} producto{totalLowStock !== 1 ? "s" : ""} con stock bajo (&le;3 en algún talle)
           </div>
         )}
       </div>
@@ -126,79 +132,87 @@ export default function StockPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-400">Cargando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">No se encontraron productos.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Producto</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Categoría</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Precio</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Talles</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Stock</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((p) => {
-                  const currentStock = edited[p.slug] ?? p.stock;
-                  const isDirty = edited[p.slug] !== undefined;
-                  const isLow = currentStock <= 3;
-                  const isSaved = saved === p.slug;
+          <div className="divide-y divide-gray-100">
+            {filtered.map((p) => {
+              const productTotal = p.sizes.reduce((acc, s) => {
+                return acc + (edits[key(p.slug, s)] ?? p.sizeStocks[s] ?? 0);
+              }, 0);
+              const hasLowSize = p.sizes.some((s) => (edits[key(p.slug, s)] ?? p.sizeStocks[s] ?? 0) <= 3);
 
-                  return (
-                    <tr key={p.slug} className={`hover:bg-gray-50 transition-colors ${isLow ? "bg-orange-50/30" : ""}`}>
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-gray-900 line-clamp-1">{p.title}</p>
-                        <p className="text-xs text-gray-400 font-mono">{p.slug}</p>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{categoryLabels[p.category] ?? p.category}</td>
-                      <td className="px-4 py-3 text-gray-700">{fmt(p.price)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {p.sizes.map((s) => (
-                            <span key={s} className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{s}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          {isLow && <span className="text-orange-500 text-xs">⚠️</span>}
+              return (
+                <div key={p.slug} className={`p-4 ${hasLowSize ? "bg-gray-50" : ""}`}>
+                  {/* Encabezado del producto */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{p.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {categoryLabels[p.category] ?? p.category} · {fmt(p.price)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">Total en stock</p>
+                      <p className={`text-xl font-bold ${productTotal <= 5 ? "text-gray-800" : "text-gray-900"}`}>
+                        {productTotal}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Grilla de talles */}
+                  <div className="flex flex-wrap gap-2">
+                    {p.sizes.map((size) => {
+                      const k = key(p.slug, size);
+                      const currentQty = edits[k] ?? p.sizeStocks[size] ?? 0;
+                      const isDirty = edits[k] !== undefined;
+                      const isLow = currentQty <= 3;
+                      const isSaved = saved === k;
+
+                      return (
+                        <div
+                          key={size}
+                          className={`flex flex-col items-center gap-1 border rounded-lg p-2 min-w-[72px] transition-colors ${
+                            isDirty ? "border-gray-700 bg-gray-50" : isLow ? "border-gray-300 bg-gray-50" : "border-gray-200"
+                          }`}
+                        >
+                          <span className="text-xs font-semibold text-gray-600 uppercase">{size}</span>
                           <input
                             type="number"
                             min={0}
-                            value={currentStock}
-                            onChange={(e) => handleEdit(p.slug, Math.max(0, parseInt(e.target.value) || 0))}
-                            className={`w-20 text-center border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-black ${
-                              isDirty ? "border-blue-400 bg-blue-50" : "border-gray-300"
-                            }`}
+                            value={currentQty}
+                            onChange={(e) =>
+                              handleEdit(p.slug, size, Math.max(0, parseInt(e.target.value) || 0))
+                            }
+                            className="w-14 text-center border-0 bg-transparent text-sm font-bold text-gray-900 focus:outline-none focus:ring-1 focus:ring-black rounded"
                           />
+                          {isLow && !isSaved && (
+                            <span className="text-xs text-gray-500 font-medium">bajo</span>
+                          )}
+                          {isSaved ? (
+                            <span className="text-xs text-gray-600 font-medium">✓</span>
+                          ) : isDirty ? (
+                            <button
+                              onClick={() => handleSave(p.slug, size)}
+                              disabled={saving === k}
+                              className="text-xs bg-black text-white px-2 py-0.5 rounded font-medium hover:bg-gray-800 disabled:opacity-40"
+                            >
+                              {saving === k ? "..." : "Guardar"}
+                            </button>
+                          ) : null}
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {isSaved ? (
-                          <span className="text-green-600 text-xs font-medium">✓ Guardado</span>
-                        ) : (
-                          <button
-                            onClick={() => handleSave(p.slug)}
-                            disabled={!isDirty || saving === p.slug}
-                            className="px-3 py-1.5 bg-black text-white text-xs font-semibold rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-30"
-                          >
-                            {saving === p.slug ? "..." : "Guardar"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        {filtered.length} de {products.length} productos · Los cambios se guardan individualmente
+        {filtered.length} de {products.length} productos &middot; Editá el número de cada talle y presioná Guardar
       </p>
     </div>
   );

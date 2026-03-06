@@ -4,9 +4,9 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
 const navItems = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/admin/ventas", label: "Ventas / Pedidos", icon: "🛍️" },
-  { href: "/admin/stock", label: "Stock", icon: "📦" },
+  { href: "/admin/dashboard", label: "Dashboard" },
+  { href: "/admin/ventas", label: "Ventas / Pedidos" },
+  { href: "/admin/stock", label: "Stock" },
 ];
 
 export default function AdminSidebar({ userName }: { userName: string }) {
@@ -34,7 +34,6 @@ export default function AdminSidebar({ userName }: { userName: string }) {
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
-              <span>{item.icon}</span>
               {item.label}
             </Link>
           );
@@ -47,13 +46,13 @@ export default function AdminSidebar({ userName }: { userName: string }) {
           href="/"
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-100 transition-colors"
         >
-          🏠 Ver tienda
+          Ver tienda
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/admin/login" })}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
         >
-          🚪 Cerrar sesión
+          Cerrar sesión
         </button>
       </div>
     </aside>

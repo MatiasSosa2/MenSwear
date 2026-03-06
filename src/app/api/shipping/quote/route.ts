@@ -1,16 +1,39 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+
+// Validación estricta de la petición de cotización de envío
+const shippingSchema = z.object({
+  destination: z.object({
+    postalCode: z
+      .string()
+      .min(4, "Código postal muy corto")
+      .max(8, "Código postal muy largo")
+      .regex(/^\d+$/, "El código postal solo puede contener números"),
+  }),
+});
 
 export async function POST(req: Request) {
   try {
-    const { destination } = await req.json();
-    const postalCode = parseInt(destination.postalCode);
-
-    if (isNaN(postalCode)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Código postal inválido'
-      }, { status: 400 });
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Body JSON inválido' },
+        { status: 400 }
+      );
     }
+
+    const parsed = shippingSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? 'Datos inválidos';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 400 }
+      );
+    }
+
+    const postalCode = parseInt(parsed.data.destination.postalCode, 10);
 
     let cost = 3500;
     let days = '3-5';
@@ -39,7 +62,6 @@ export async function POST(req: Request) {
       service = 'Regional';
     }
 
-    // Respuesta simulada exitosa
     return NextResponse.json({
       carrier: 'andreani',
       service: service,
@@ -50,9 +72,9 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error('Error calculating shipping:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Error interno al calcular envío'
-    }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Error interno al calcular envío' },
+      { status: 500 }
+    );
   }
 }

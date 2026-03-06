@@ -74,9 +74,9 @@ enum OrderStatus {
 // ─── STOCK DE PRODUCTOS ──────────────────────────────────────────────────────
 
 model ProductStock {
-  slug      String   @id
-  stock     Int      @default(0)
-  updatedAt DateTime @updatedAt @map("updated_at")
+  slug       String   @id
+  sizeStocks Json     @default("{}")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("product_stock")
 }
